@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ckd-prediction-service
+  namespace: image-processing
+  labels:
+    app: ckd-prediction-system
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8501
+    protocol: TCP
+    name: http
+  selector:
+    app: ckd-prediction-system

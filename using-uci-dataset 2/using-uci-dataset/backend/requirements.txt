@@ -1,0 +1,33 @@
+# FastAPI Backend Requirements
+
+# Web Framework
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+
+# Database
+sqlalchemy==2.0.36
+alembic==1.14.0
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.0
+python-multipart==0.0.20
+
+# Configuration
+pydantic==2.10.3
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
+
+# ML Dependencies (from existing project - already installed)
+numpy
+pandas
+scikit-learn
+xgboost
+shap
+lime
+matplotlib
+joblib
+
+# Utilities
+aiosqlite==0.20.0

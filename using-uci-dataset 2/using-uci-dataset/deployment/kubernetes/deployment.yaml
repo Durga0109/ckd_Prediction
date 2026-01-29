@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ckd-prediction-system
+  namespace: image-processing
+  labels:
+    app: ckd-prediction-system
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ckd-prediction-system
+  template:
+    metadata:
+      labels:
+        app: ckd-prediction-system
+    spec:
+      serviceAccountName: eks-step-functions-sa
+      nodeSelector:
+        type: cpu-node
+      containers:
+      - name: ckd-prediction-system
+        image: 302263040839.dkr.ecr.ap-south-1.amazonaws.com/ckd_prediction:latest
+        ports:
+        - containerPort: 8501
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 15
+          periodSeconds: 5

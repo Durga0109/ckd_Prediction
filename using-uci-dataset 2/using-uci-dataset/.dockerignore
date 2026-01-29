@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation (keep only if needed)
+*.md
+!README.md
+
+# Test files
+*_test.py
+test_*.py
+tests/
+
+# Deployment folder (we don't need this in the container)
+deployment/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Keep model files - they're essential!
+# *.pkl  # Don't exclude .pkl files
+
+# Keep data files
+*.csv
+
+# Keep example files that might be useful
+example_*.py
+demo.py
