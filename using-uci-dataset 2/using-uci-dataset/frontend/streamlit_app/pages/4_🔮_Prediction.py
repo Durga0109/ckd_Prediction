@@ -176,7 +176,7 @@ if "current_res" in st.session_state:
     st.subheader("🧬 Explainable AI Analysis (XAI)")
     st.write("Below is a breakdown of which biomarkers influenced the model's decision the most for this patient.")
     
-    tab_shap, tab_hist = st.tabs(["🎯 SHAP Risk Factors", "📈 Progression History"])
+    tab_shap, tab_lime, tab_hist = st.tabs(["🎯 SHAP Risk Factors", "🧬 LIME Analysis", "📈 Progression History"])
     
     with tab_shap:
         shap_data = res.get('top_features', [])
@@ -185,16 +185,36 @@ if "current_res" in st.session_state:
             fig = px.bar(feat_df, x='shap_value', y='feature', orientation='h', 
                          color='shap_value', color_continuous_scale='RdBu_r',
                          labels={"shap_value": "Impact Score", "feature": "Biomarker"},
-                         title="Feature Impact (Red = Increases CKD Risk, Blue = Protective)")
+                         title="SHAP Risk Breakdown (Red = Increases Risk, Blue = Protective)")
             fig.update_layout(yaxis={'categoryorder':'total ascending'}, height=450)
             st.plotly_chart(fig, use_container_width=True)
             
             st.markdown("""
-            **How to read this chart:**
+            **How to read this chart (SHAP):**
             *   **Red Bars:** These parameters are outside the normal range and are pushing the patient toward a CKD diagnosis.
             *   **Blue Bars:** These parameters are in a healthy state and are protecting the patient from CKD.
-            *   **Length:** The longer the bar, the more 'important' that specific test result was for this prediction.
+            *   **Interpretation:** SHAP provides a mathematically consistent breakdown based on all possible feature combinations.
             """)
+
+    with tab_lime:
+        lime_data = res.get('lime_values', {}).get('top_features', [])
+        if lime_data:
+            lime_df = pd.DataFrame(lime_data)
+            fig_lime = px.bar(lime_df, x='lime_weight', y='feature', orientation='h', 
+                             color='lime_weight', color_continuous_scale='curl',
+                             labels={"lime_weight": "Weight Impact", "feature": "Biomarker"},
+                             title="LIME Local Explanation (Decision Local Logic)")
+            fig_lime.update_layout(yaxis={'categoryorder':'total ascending'}, height=450)
+            st.plotly_chart(fig_lime, use_container_width=True)
+            
+            st.markdown("""
+            **How to read this chart (LIME):**
+            *   **Local Importance:** LIME explains why the model made *this specific* decision by perturbing the data locally.
+            *   **Consistency Check:** If SHAP and LIME both highlight the same top biomarkers (e.g., Hemoglobin or SC), the diagnosis is highly reliable.
+            *   **Novelty:** Providing two XAI perspectives is a significant enhancement for clinical validation.
+            """)
+        else:
+            st.info("LIME analysis is not available for this record.")
 
     with tab_hist:
         if history:
@@ -215,3 +235,12 @@ if "current_res" in st.session_state:
             st.dataframe(h_df, use_container_width=True, hide_index=True)
         else:
             st.info("Additional visits are required to generate trend data.")
+
+# Custom CSS
+st.markdown("""
+<style>
+    .stButton>button {
+        height: 3em;
+    }
+</style>
+""", unsafe_allow_html=True)

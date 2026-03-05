@@ -20,14 +20,16 @@ def get_auth_headers() -> Dict[str, str]:
 def login(email: str, password: str) -> bool:
     """Login to the system"""
     try:
+        # Strip whitespace to prevent common 401 errors
+        clean_email = email.strip()
         response = requests.post(
             f"{API_URL}/auth/login",
-            data={"username": email, "password": password}
+            data={"username": clean_email, "password": password}
         )
         if response.status_code == 200:
             data = response.json()
             st.session_state.token = data["access_token"]
-            st.session_state.user_email = email
+            st.session_state.user_email = clean_email
             return True
         return False
     except Exception as e:
@@ -37,10 +39,12 @@ def login(email: str, password: str) -> bool:
 def signup(email: str, password: str, full_name: str, specialization: str) -> bool:
     """Register a new clinician"""
     try:
+        # Strip whitespace
+        clean_email = email.strip()
         response = requests.post(
             f"{API_URL}/auth/signup",
             json={
-                "email": email,
+                "email": clean_email,
                 "password": password,
                 "full_name": full_name,
                 "specialization": specialization
@@ -83,17 +87,22 @@ def get_patients() -> list:
     except:
         return []
 
-def create_patient(patient_data: Dict) -> bool:
-    """Create a new patient"""
+def create_patient(patient_data: Dict) -> Optional[Dict]:
+    """Create a new patient. Returns the created patient dict on success, or None on failure."""
     try:
         response = requests.post(
             f"{API_URL}/patients/",
             headers=get_auth_headers(),
             json=patient_data
         )
-        return response.status_code == 201
-    except:
-        return False
+        if response.status_code == 201:
+            return response.json()
+        else:
+            st.error(f"Failed to create patient: {response.text}")
+            return None
+    except Exception as e:
+        st.error(f"Connection error: {e}")
+        return None
 
 def update_patient(patient_id: int, patient_data: Dict) -> bool:
     """Update patient details"""

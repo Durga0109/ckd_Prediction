@@ -3,6 +3,10 @@ Configuration settings for the CKD Clinical System
 """
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+import os
+
+# Absolute path to project root (2 levels up from this file: backend/app/config.py -> root)
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
 class Settings(BaseSettings):
@@ -20,8 +24,8 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     
-    # ML Models Path
-    ml_models_path: str = "../"
+    # ML Models Path — absolute path to project root where .pkl files live
+    ml_models_path: str = PROJECT_ROOT
     
     class Config:
         env_file = ".env"
