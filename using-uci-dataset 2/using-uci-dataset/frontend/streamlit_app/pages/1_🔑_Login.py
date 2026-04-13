@@ -7,10 +7,7 @@ st.set_page_config(page_title="Login - CKD System", page_icon="🔑")
 init_auth()
 
 if is_authenticated():
-    st.success("You are logged in!")
-    if st.button("Go to Dashboard"):
-        st.switch_page("app.py")
-    st.stop()
+    st.switch_page("app.py")
 
 st.title("🔐 Clinician Access")
 
