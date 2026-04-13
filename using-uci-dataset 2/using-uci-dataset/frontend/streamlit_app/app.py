@@ -3,7 +3,7 @@ from utils.auth import init_auth, is_authenticated
 
 # Page config
 st.set_page_config(
-    page_title="CKD Clinical System",
+    page_title="CKD Clinical Decision Support",
     page_icon="🏥",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -14,62 +14,69 @@ init_auth()
 
 # Sidebar
 with st.sidebar:
-    st.title("🏥 CKD Clinical System")
+    st.title("CKD Clinical System")
     
     if is_authenticated():
-        st.success(f"Logged in as: {st.session_state.user_email}")
-        if st.button("Logout"):
+        st.success(f"Authenticated: {st.session_state.user_email}")
+        if st.button("Sign Out", use_container_width=True):
             from utils.auth import logout
             logout()
     else:
-        st.info("Please login to continue")
+        st.info("Authentication Required")
 
 # Main content
-st.write("# Welcome to CKD Clinical Prediction System")
+st.header("Chronic Kidney Disease (CKD) Clinical Decision Support System")
 
 if not is_authenticated():
     st.markdown("""
-    ### 👨‍⚕️ For Clinicians
+    ### Clinician Portal
     
-    This system provides advanced AI-powered tools for Chronic Kidney Disease diagnosis and management.
+    This system provides advanced diagnostic tools for Chronic Kidney Disease identification and management, leveraging validated machine learning models.
     
-    #### Key Features:
-    - **Patient Management**: Securely store and manage patient profiles
-    - **AI Prediction**: 98.75% accurate CKD prediction
-    - **Explainable AI**: Understand predictions with **SHAP** and **LIME** analysis
-    - **Clinical Tools**: Automated **eGFR** calculation and **CKD Staging**
+    #### System Capabilities:
+    *   **Patient Record Management**: Centralized storage for clinical and demographic data.
+    *   **Predictive Diagnostics**: High-accuracy (98.75%) algorithmic CKD risk assessment.
+    *   **Interpretability Analysis**: Comprehensive model interpretability through **SHAP** and **LIME** analytics.
+    *   **Renal Function Monitoring**: Automated **eGFR** calculation and standardized **CKD Staging**.
     
-    👈 **Please login using the sidebar menu to access the system.**
+    **Please authenticate via the sidebar to access clinical modules.**
     """)
 else:
     st.markdown("""
-    ### 👋 Welcome back!
+    ### Dashboard Overview
     
-    Select a module from the sidebar to begin:
+    Select a clinical module from the navigation menu or use the quick actions below to begin.
     
-    - **👥 Patient List**: View and manage your patients
-    - **👤 Add Patient**: Create new patient profiles
-    - **🔮 Predictions**: Run AI analysis on patient data
+    *   **Patient Records**: View and audit existing patient longitudinal data.
+    *   **New Registration**: Enroll patients and initialize clinical profiles.
+    *   **Diagnostic Analysis**: Perform algorithmic assessments on laboratory results.
     
     ---
     
-    #### 🚀 Quick Actions
+    #### Quick Actions
     """)
     
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("👥 View All Patients", use_container_width=True):
-            st.switch_page("pages/2_👥_Patients.py")
+        if st.button("View Patient Records", use_container_width=True):
+            st.switch_page("pages/2_Patients.py")
             
     with col2:
-        if st.button("➕ Add New Patient", use_container_width=True):
-            st.switch_page("pages/3_👤_Patient_Profile.py")
+        if st.button("Register New Patient", use_container_width=True):
+            st.switch_page("pages/3_Registration.py")
 
 # Custom CSS
 st.markdown("""
 <style>
     .stButton>button {
         height: 3em;
+        border-radius: 5px;
+    }
+    .stMetric {
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #dee2e6;
     }
 </style>
 """, unsafe_allow_html=True)
