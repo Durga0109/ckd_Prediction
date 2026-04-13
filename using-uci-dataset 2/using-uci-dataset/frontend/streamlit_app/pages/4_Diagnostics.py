@@ -34,6 +34,16 @@ selected_patient_id = st.selectbox(
     format_func=lambda x: next((p["full_name"] for p in patients if p["id"] == x), f"ID: {x}")
 )
 
+# Patient Switch Detection: Reset results if a different patient is selected
+if "last_active_pid" not in st.session_state:
+    st.session_state.last_active_pid = selected_patient_id
+
+if st.session_state.last_active_pid != selected_patient_id:
+    st.session_state.last_active_pid = selected_patient_id
+    if "current_res" in st.session_state: del st.session_state.current_res
+    if "prev_res" in st.session_state: del st.session_state.prev_res
+    st.rerun()
+
 # Patient Data Retrieval
 patient = next((p for p in patients if p["id"] == selected_patient_id), None)
 history = get_patient_history(selected_patient_id)
