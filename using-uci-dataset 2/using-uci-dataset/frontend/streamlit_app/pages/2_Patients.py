@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
-from utils.auth import require_auth, init_auth
+from utils.auth import require_auth, init_auth, render_sidebar
 from utils.api import get_patients
 
 st.set_page_config(page_title="Patient Records - CKD System", page_icon="🏥", layout="wide")
 init_auth()
 require_auth()
+render_sidebar()
 
 st.header("Clinical Patient Record Management")
 

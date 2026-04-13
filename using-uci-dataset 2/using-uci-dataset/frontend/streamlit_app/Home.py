@@ -13,16 +13,8 @@ st.set_page_config(
 init_auth()
 
 # Sidebar
-with st.sidebar:
-    st.title("CKD Clinical System")
-    
-    if is_authenticated():
-        st.success(f"Authenticated: {st.session_state.user_email}")
-        if st.button("Sign Out", use_container_width=True):
-            from utils.auth import logout
-            logout()
-    else:
-        st.info("Authentication Required")
+from utils.auth import render_sidebar
+render_sidebar()
 
 # Main content
 st.header("Chronic Kidney Disease (CKD) Clinical Decision Support System")
@@ -59,7 +51,7 @@ else:
     #### Quick Actions
     """)
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("View Patient Records", use_container_width=True):
             st.switch_page("pages/2_Patients.py")
@@ -68,18 +60,6 @@ else:
         if st.button("Register New Patient", use_container_width=True):
             st.switch_page("pages/3_Registration.py")
 
-# Custom CSS
-st.markdown("""
-<style>
-    .stButton>button {
-        height: 3em;
-        border-radius: 5px;
-    }
-    .stMetric {
-        background-color: #f8f9fa;
-        padding: 10px;
-        border-radius: 5px;
-        border: 1px solid #dee2e6;
-    }
-</style>
-""", unsafe_allow_html=True)
+    with col3:
+        if st.button("View Patient Diagnostics", use_container_width=True):
+            st.switch_page("pages/4_Diagnostics.py")

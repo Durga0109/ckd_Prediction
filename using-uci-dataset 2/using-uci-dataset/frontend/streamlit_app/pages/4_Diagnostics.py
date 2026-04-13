@@ -3,13 +3,14 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
-from utils.auth import require_auth, init_auth
+from utils.auth import require_auth, init_auth, render_sidebar
 from utils.api import get_patients, make_prediction, get_patient_history
 from utils.pdf_gen import generate_patient_pdf
 
 st.set_page_config(page_title="Diagnostic Analysis", page_icon="🏥", layout="wide")
 init_auth()
 require_auth()
+render_sidebar()
 
 st.header("Clinical Consultation & Diagnostic Assessment")
 
@@ -49,9 +50,8 @@ patient = next((p for p in patients if p["id"] == selected_patient_id), None)
 history = get_patient_history(selected_patient_id)
 
 if patient:
-    st.sidebar.markdown(f"**Patient Information**")
-    st.sidebar.write(f"Name: {patient['full_name']}")
-    st.sidebar.write(f"Age: {patient['age']} | Biological Sex: {patient['sex']}")
+    st.markdown(f"#### Active Consultation: {patient['full_name']}")
+    st.caption(f"Age: {patient['age']} | Biological Sex: {patient['sex']}")
 
 # Longitudinal Data pre-filling
 latest_data = patient.copy()

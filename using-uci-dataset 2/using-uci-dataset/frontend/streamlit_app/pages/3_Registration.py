@@ -1,10 +1,11 @@
 import streamlit as st
-from utils.auth import require_auth, init_auth
+from utils.auth import require_auth, init_auth, render_sidebar
 from utils.api import create_patient, update_patient, get_patients
 
 st.set_page_config(page_title="Patient Enrollment", page_icon="🏥", layout="wide")
 init_auth()
 require_auth()
+render_sidebar()
 
 st.header("New Patient Enrollment & Clinical Registration")
 st.markdown("### Section I: Foundation Identity")
@@ -31,7 +32,7 @@ with st.form("patient_form"):
         age = st.number_input("Patient Age", min_value=0, max_value=120, value=patient_data.get("age", 40))
     with col2:
         sex = st.selectbox("Biological Sex", ["male", "female"], index=0 if patient_data.get("sex") == "male" else 1)
-        contact = st.text_input("Primary Contact Number", value=patient_data.get("contact_number", ""), placeholder="+1 234 567 890")
+        contact = st.text_input("Primary Contact Number", value=patient_data.get("contact_number", ""), placeholder="+91 1234567890")
 
     # HIDDEN DEFAULT VALUES for a new profile
     defaults = {

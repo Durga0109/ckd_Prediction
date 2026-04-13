@@ -7,7 +7,7 @@ st.set_page_config(page_title="Login - CKD System", page_icon="🏥")
 init_auth()
 
 if is_authenticated():
-    st.switch_page("app.py")
+    st.switch_page("Home.py")
 
 st.header("Authorized Personnel Access")
 
@@ -22,6 +22,9 @@ with tab1:
         
         if submit:
             if login(email, password):
+                # Fetch full clinician profile for professional session display
+                from utils.api import get_current_user
+                st.session_state.user_info = get_current_user()
                 st.success("Authentication successful.")
                 st.rerun()
             else:
