@@ -29,10 +29,10 @@ else:
     # Select and rename columns for professional display
     display_mapping = {
         "id": "Patient Identifier",
-        "full_name": "Full Legal Name",
+        "full_name": "Name",
         "age": "Age",
         "sex": "Gender",
-        "contact_number": "Primary Contact",
+        "contact_number": "Contact Number",
         "created_at": "Registration Date"
     }
     
@@ -45,27 +45,3 @@ else:
             "Registration Date": st.column_config.DatetimeColumn("Date of Registration", format="D MMM YYYY"),
         }
     )
-    
-    st.divider()
-    
-    # Action interface
-    st.subheader("Clinical Actions")
-    
-    c1, c2 = st.columns([2, 1])
-    with c1:
-        selected_patient_id = st.selectbox(
-            "Select Patient for Review or Analysis",
-            options=[p["id"] for p in patients],
-            format_func=lambda x: next((p["full_name"] for p in patients if p["id"] == x), f"ID: {x}")
-        )
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Modify Clinical Profile", use_container_width=True):
-            st.session_state.edit_patient_id = selected_patient_id
-            st.switch_page("pages/3_Registration.py")
-            
-    with col2:
-        if st.button("Execute Diagnostic Analysis", use_container_width=True, type="primary"):
-            st.session_state.predict_patient_id = selected_patient_id
-            st.switch_page("pages/4_Diagnostics.py")

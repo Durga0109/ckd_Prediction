@@ -9,7 +9,6 @@ render_sidebar()
 
 st.header("New Patient Enrollment & Clinical Registration")
 st.markdown("### Section I: Foundation Identity")
-st.info("Record the patient's demographic and foundational clinical data. Detailed laboratory analytics will be managed in the Diagnostic Dashboard.")
 
 # Check if editing existing patient
 is_edit = "edit_patient_id" in st.session_state
@@ -28,11 +27,11 @@ with st.form("patient_form"):
     st.subheader("Demographics & Identification")
     col1, col2 = st.columns(2)
     with col1:
-        full_name = st.text_input("Full Legal Name", value=patient_data.get("full_name", ""), placeholder="e.g. John Doe")
-        age = st.number_input("Patient Age", min_value=0, max_value=120, value=patient_data.get("age", 40))
+        full_name = st.text_input("Name", value=patient_data.get("full_name", ""))
+        age = st.number_input("Age", min_value=0, max_value=120, value=patient_data.get("age", 0))
     with col2:
-        sex = st.selectbox("Biological Sex", ["male", "female"], index=0 if patient_data.get("sex") == "male" else 1)
-        contact = st.text_input("Primary Contact Number", value=patient_data.get("contact_number", ""), placeholder="+91 1234567890")
+        sex = st.selectbox("Sex", ["Male", "Female"], index=0 if patient_data.get("sex") == "male" else 1)
+        contact = st.text_input("Contact Number", value=patient_data.get("contact_number", ""))
 
     # HIDDEN DEFAULT VALUES for a new profile
     defaults = {
