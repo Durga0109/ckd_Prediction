@@ -249,7 +249,3 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-t: 3em;
-    }
-</style>
-""", unsafe_allow_html=True)

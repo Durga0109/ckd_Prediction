@@ -38,9 +38,12 @@ if not is_authenticated():
     *   **Predictive Diagnostics**: High-accuracy (98.75%) algorithmic CKD risk assessment.
     *   **Interpretability Analysis**: Comprehensive model interpretability through **SHAP** and **LIME** analytics.
     *   **Renal Function Monitoring**: Automated **eGFR** calculation and standardized **CKD Staging**.
-    
-    **Please authenticate via the sidebar to access clinical modules.**
     """)
+    
+    if st.button("Enter Secure Clinician Portal", type="primary", use_container_width=True):
+        st.switch_page("pages/1_Login.py")
+    
+    st.info("Authentication is required to access patient data and diagnostic modules.")
 else:
     st.markdown("""
     ### Dashboard Overview

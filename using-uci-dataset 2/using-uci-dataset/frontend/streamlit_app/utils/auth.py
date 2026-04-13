@@ -26,7 +26,13 @@ def logout():
     st.rerun()
 
 def require_auth():
-    """Redirect to login if not authenticated"""
+    """Redirect to login if not authenticated with professional UI"""
     if not is_authenticated():
-        st.warning("Please login to access this page")
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.error("Authentication Required")
+            st.info("You must be logged in to access this clinical module. Please authenticate your credentials to continue.")
+            if st.button("Proceed to Clinician Login", use_container_width=True, type="primary"):
+                st.switch_page("pages/1_Login.py")
         st.stop()
