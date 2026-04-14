@@ -31,10 +31,10 @@ with tab1:
                 st.error("Invalid credentials. Please verify your email and password.")
 
 with tab2:
-    st.subheader("Credential Registration")
+    st.subheader("Signup")
     with st.form("signup_form"):
         new_email = st.text_input("Institutional Email")
-        new_password = st.text_input("Secure Password (Min. 8 characters)", type="password")
+        new_password = st.text_input("Secure Password", type="password")
         full_name = st.text_input("Medical Professional Full Name")
         specialization = st.selectbox("Department / Specialization", [
             "Nephrology", "General Practice", "Internal Medicine", "Cardiology", "System Administrator", "Other"

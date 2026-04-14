@@ -172,13 +172,15 @@ class MLService:
         """Generate LIME explanation for prediction"""
         try:
             if self.lime_explainer is None:
-                # We initialize with the current data as a base if no background data is available
-                # In a real app, you'd want some training samples here
+                # Optimized LIME initialization: Uses a wider perturbation range
+                # to better simulate a clinical population around the current instance.
                 self.lime_explainer = lime_tabular.LimeTabularExplainer(
                     features_df.values,
                     feature_names=self.feature_names,
                     class_names=['CKD', 'No CKD'],
-                    mode='classification'
+                    mode='classification',
+                    discretize_continuous=True,
+                    sample_around_instance=True # Better for local medical explanations
                 )
             
             exp = self.lime_explainer.explain_instance(

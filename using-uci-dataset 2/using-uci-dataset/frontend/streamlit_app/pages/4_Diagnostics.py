@@ -244,7 +244,16 @@ if "current_res" in st.session_state:
         else:
             st.info("Additional clinical sessions are required to generate longitudinal trend data.")
 
-# Professional Styling
+# Professional Styling & Methodology Note
+st.divider()
+st.caption("""
+**Technical Methodology & Clinical Credits:**
+- **eGFR Calculation**: Estimated Glomerular Filtration Rate derived via the **CKD-EPI 2021** race-free equation.
+- **CKD Staging**: Classified according to the **KDIGO 2024 Clinical Practice Guidelines**.
+- **Model Engine**: Ensemble Classifiers (Random Forest/Decision Tree) operating on scikit-learn v1.7.2/1.8.0 compatibility layer.
+- **Explainability**: Local interpretability generated via SHAP (Kernel/Tree) and LIME (Tabular) methodologies.
+""")
+
 st.markdown("""
 <style>
     .stButton>button {

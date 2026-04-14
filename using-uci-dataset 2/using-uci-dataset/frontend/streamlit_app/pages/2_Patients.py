@@ -64,7 +64,7 @@ else:
         patient = next((p for p in patients if p["id"] == selected_patient_id), None)
         history = get_patient_history(selected_patient_id)
         
-        tab_profile, tab_history, tab_trends = st.tabs(["Identity Profile", "Diagnostic History", "Clinical Progression"])
+        tab_profile, tab_history, tab_trends, tab_maintenance = st.tabs(["Identity Profile", "Diagnostic History", "Clinical Progression", "System Maintenance"])
         
         with tab_profile:
             col_p1, col_p2 = st.columns(2)
@@ -121,3 +121,17 @@ else:
                 fig = px.line(h_df, x="Date", y="eGFR", markers=True, title=f"eGFR Trendline: {patient['full_name']}")
                 fig.add_hline(y=60, line_dash="dash", line_color="red", annotation_text="CKD Threshold (60)")
                 st.plotly_chart(fig, use_container_width=True)
+
+        with tab_maintenance:
+            st.warning("### Danger Zone")
+            st.write("Deleting this record will permanently remove the patient profile and all associated diagnostic history. This action cannot be undone.")
+            
+            confirm_text = st.text_input(f"Type '{patient['full_name']}' to confirm deletion", placeholder=patient['full_name'])
+            
+            if st.button(f"Permanently Delete {patient['full_name']}", type="primary", use_container_width=True, disabled=(confirm_text != patient['full_name'])):
+                from utils.api import delete_patient
+                if delete_patient(selected_patient_id):
+                    st.success("Record successfully purged from clinical database.")
+                    st.rerun()
+                else:
+                    st.error("Deletion failed. Ensure you have administrative privileges.")
