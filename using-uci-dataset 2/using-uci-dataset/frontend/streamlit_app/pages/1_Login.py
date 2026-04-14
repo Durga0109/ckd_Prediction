@@ -11,7 +11,7 @@ if is_authenticated():
 
 st.header("Authorized Personnel Access")
 
-tab1, tab2 = st.tabs(["Clinician Login", "New Clinician Registration"])
+tab1, tab2 = st.tabs(["Clinician Login", "Clinician Signup"])
 
 with tab1:
     st.subheader("Sign In")

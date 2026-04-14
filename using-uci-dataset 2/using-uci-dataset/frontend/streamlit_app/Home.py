@@ -17,7 +17,7 @@ from utils.auth import render_sidebar
 render_sidebar()
 
 # Main content
-st.header("Chronic Kidney Disease (CKD) Clinical Decision Support System")
+st.header("CKD Clinical Decision Support System")
 
 if not is_authenticated():
     st.markdown("""
@@ -38,7 +38,7 @@ if not is_authenticated():
     st.info("Authentication is required to access patient data and diagnostic modules.")
 else:
     st.markdown("""
-    ### Dashboard Overview
+    ### Overview
     
     Select a clinical module from the navigation menu or use the quick actions below to begin.
     
