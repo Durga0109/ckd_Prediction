@@ -8,7 +8,7 @@ require_auth()
 render_sidebar()
 
 st.header("New Patient Enrollment & Clinical Registration")
-st.markdown("### Section I: Foundation Identity")
+st.markdown("### Foundation Identity")
 
 # Check if editing existing patient
 is_edit = "edit_patient_id" in st.session_state
@@ -37,7 +37,7 @@ with st.form("patient_form"):
     defaults = {
         "bp": 80.0, "sg": 1.020, "al": 0, "su": 0, "bgr": 120.0, "bu": 36.0, "sc": 1.2,
         "sod": 137.0, "pot": 4.5, "hemo": 15.0, "pcv": 44.0, "wbcc": 7800.0, "rbcc": 5.2,
-        "rbc": "normal", "pc": "normal", "pcc": "notpresent", "ba": "notpresent", "htn": "no", "dm": "no", "cad": "no",
+        "rbc": "normal", "pc": "normal", "pcc": "not present", "ba": "not present", "htn": "no", "dm": "no", "cad": "no",
         "appet": "good", "pe": "no", "ane": "no"
     }
 

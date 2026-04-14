@@ -50,8 +50,8 @@ patient = next((p for p in patients if p["id"] == selected_patient_id), None)
 history = get_patient_history(selected_patient_id)
 
 if patient:
-    st.markdown(f"#### Active Consultation: {patient['full_name']}")
-    st.caption(f"Age: {patient['age']} | Biological Sex: {patient['sex']}")
+    st.caption(f"Age: {patient['age']}")
+    st.caption(f"Sex: {patient['sex']}")
 
 # Longitudinal Data pre-filling
 latest_data = patient.copy()
@@ -59,7 +59,7 @@ if history:
     latest_data = history[0].get('input_data', patient.copy())
 
 # 2. Laboratory Data Entry
-st.markdown("### Section II: Laboratory Results Entry")
+st.markdown("### Laboratory Results Entry")
 st.caption("Update relevant biomarkers from the latest laboratory report. Standard reference ranges are provided for clinical guidance.")
 
 # Consultation mapping
@@ -97,10 +97,10 @@ with st.form("visit_form"):
         c1, c2, c3 = st.columns(3)
         rbc = c1.selectbox("Red Blood Cell Morphology", ["normal", "abnormal"], index=0 if latest_data.get("rbc") == "normal" else 1)
         pc = c2.selectbox("Pus Cell Presence", ["normal", "abnormal"], index=0 if latest_data.get("pc") == "normal" else 1)
-        pcc = c3.selectbox("Pus Cell Clumps", ["notpresent", "present"], index=0 if latest_data.get("pcc") == "notpresent" else 1)
+        pcc = c3.selectbox("Pus Cell Clumps", ["not present", "present"], index=0 if latest_data.get("pcc") == "not present" else 1)
         
         c4, c5, c6 = st.columns(3)
-        ba = c4.selectbox("Bacteriuria", ["notpresent", "present"], index=0 if latest_data.get("ba") == "notpresent" else 1)
+        ba = c4.selectbox("Bacteriuria", ["not present", "present"], index=0 if latest_data.get("ba") == "not present" else 1)
         htn = c5.selectbox("Hypertensive Status", ["no", "yes"], index=0 if latest_data.get("htn") == "no" else 1)
         dm = c6.selectbox("Diabetic History", ["no", "yes"], index=0 if latest_data.get("dm") == "no" else 1)
         

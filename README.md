@@ -71,12 +71,12 @@ ckd_Prediction/
         │
         ├── frontend/                         # Streamlit frontend
         │   ├── streamlit_app/
-        │   │   ├── app.py                    # Streamlit entry point
+        │   │   ├── Home.py                    # Streamlit entry point
         │   │   ├── pages/
-        │   │   │   ├── 1_🔑_Login.py
-        │   │   │   ├── 2_👥_Patients.py
-        │   │   │   ├── 3_👤_Patient_Profile.py
-        │   │   │   └── 4_🔮_Prediction.py
+        │   │   │   ├── 1_Login.py
+        │   │   │   ├── 2_Patients.py
+        │   │   │   ├── 3_Registration.py
+        │   │   │   └── 4_Diagnostics.py
         │   │   └── utils/
         │   │       ├── api.py                # Backend API client
         │   │       ├── auth.py               # Session / auth helpers
@@ -149,7 +149,7 @@ python -m uvicorn app.main:app --reload --port 8000
 ```bash
 cd frontend
 pip install -r requirements.txt
-python -m streamlit run streamlit_app/app.py
+python -m streamlit run streamlit_app/Home.py
 ```
 
 ## Usage
