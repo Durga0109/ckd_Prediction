@@ -303,19 +303,39 @@ if "current_res" in st.session_state:
 
     with tab_hist:
         if history and len(history) > 1:
-            h_list = []
-            for h in history:
-                h_list.append({
-                    "Consultation Date": h.get("visit_date", h["created_at"])[:10],
-                    "Diagnosis": h["ckd_prediction"],
-                    "eGFR": h["egfr"],
-                    "Stage": h["ckd_stage"]
-                })
-            h_df = pd.DataFrame(h_list).sort_values("Consultation Date")
+            # Prepare data with full timestamps to avoid same-day collapsing
+            h_df = pd.DataFrame([{
+                "Consultation Date": pd.to_datetime(h.get("visit_date", h["created_at"])),
+                "Diagnosis": h["ckd_prediction"],
+                "eGFR": float(h["egfr"]),
+                "Stage": h.get("ckd_stage", "N/A")
+            } for h in history]).sort_values("Consultation Date")
             
-            fig_trend = px.line(h_df, x='Consultation Date', y='eGFR', markers=True, title="eGFR Longitudinal Trendline")
+            # Format for hover interaction
+            h_df["Display Date"] = h_df["Consultation Date"].dt.strftime("%d %b %Y %H:%M")
+            
+            fig_trend = px.line(h_df, x='Consultation Date', y='eGFR', markers=True, 
+                              title="eGFR Longitudinal Progression Trend",
+                              hover_data=["Display Date", "eGFR", "Stage", "Diagnosis"])
+            
+            # Add Clinical Stage Background Bands (KDIGO)
+            fig_trend.add_hrect(y0=90, y1=max(140, h_df["eGFR"].max() + 10), fillcolor="green", opacity=0.1, annotation_text="G1: Normal", annotation_position="top left")
+            fig_trend.add_hrect(y0=60, y1=90, fillcolor="#ccffcc", opacity=0.15, annotation_text="G2: Mild Decrease", annotation_position="top left")
+            fig_trend.add_hrect(y0=30, y1=60, fillcolor="orange", opacity=0.1, annotation_text="G3: Moderate", annotation_position="top left")
+            fig_trend.add_hrect(y0=15, y1=30, fillcolor="red", opacity=0.1, annotation_text="G4: Severe", annotation_position="top left")
+            fig_trend.add_hrect(y0=0, y1=15, fillcolor="#8b0000", opacity=0.1, annotation_text="G5: Failure", annotation_position="top left")
+            
+            # Add CKD Threshold line
+            fig_trend.add_hline(y=60, line_dash="dash", line_color="red", annotation_text="CKD Threshold (60)", annotation_position="bottom right")
+            
+            fig_trend.update_layout(yaxis_range=[0, max(130, h_df["eGFR"].max() + 10)], xaxis_title="Timeline", yaxis_title="eGFR (mL/min/1.73m²)")
+            
             st.plotly_chart(fig_trend, use_container_width=True)
-            st.dataframe(h_df, use_container_width=True, hide_index=True)
+            
+            # Display history table below
+            display_df = h_df.copy()
+            display_df["Consultation Date"] = display_df["Consultation Date"].dt.strftime("%Y-%m-%d")
+            st.dataframe(display_df[["Consultation Date", "Diagnosis", "eGFR", "Stage"]], use_container_width=True, hide_index=True)
         else:
             st.info("Additional clinical sessions are required to generate longitudinal trend data.")
 

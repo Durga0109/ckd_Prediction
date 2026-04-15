@@ -196,13 +196,36 @@ else:
             if len(history) < 2:
                 st.info("Additional clinical sessions are required to generate longitudinal trend data.")
             else:
+                # Prepare data with full timestamps to avoid same-day collapsing
                 h_df = pd.DataFrame([{
-                    "Date": h.get("visit_date", h["created_at"])[:10],
-                    "eGFR": h["egfr"]
-                } for h in history]).sort_values("Date")
+                    "Timestamp": pd.to_datetime(h.get("visit_date", h["created_at"])),
+                    "eGFR": float(h["egfr"]),
+                    "Stage": h.get("ckd_stage", "N/A")
+                } for h in history]).sort_values("Timestamp")
                 
-                fig = px.line(h_df, x="Date", y="eGFR", markers=True, title=f"eGFR Trendline: {patient['full_name']}")
-                fig.add_hline(y=60, line_dash="dash", line_color="red", annotation_text="CKD Threshold (60)")
+                # Format for display
+                h_df["Display Date"] = h_df["Timestamp"].dt.strftime("%d %b %Y %H:%M")
+                
+                fig = px.line(h_df, x="Timestamp", y="eGFR", markers=True, 
+                             title=f"eGFR Longitudinal Progression: {patient['full_name']}",
+                             hover_data=["Display Date", "eGFR", "Stage"])
+                
+                # Add Clinical Stage Background Bands (KDIGO)
+                # Stage 1: >= 90
+                fig.add_hrect(y0=90, y1=max(140, h_df["eGFR"].max() + 10), fillcolor="green", opacity=0.1, annotation_text="G1: Normal", annotation_position="top left")
+                # Stage 2: 60-89
+                fig.add_hrect(y0=60, y1=90, fillcolor="#ccffcc", opacity=0.15, annotation_text="G2: Mild Decrease", annotation_position="top left")
+                # Stage 3: 30-59
+                fig.add_hrect(y0=30, y1=60, fillcolor="orange", opacity=0.1, annotation_text="G3: Moderate", annotation_position="top left")
+                # Stage 4: 15-29
+                fig.add_hrect(y0=15, y1=30, fillcolor="red", opacity=0.1, annotation_text="G4: Severe", annotation_position="top left")
+                # Stage 5: < 15
+                fig.add_hrect(y0=0, y1=15, fillcolor="#8b0000", opacity=0.1, annotation_text="G5: Failure", annotation_position="top left")
+                
+                # Add CKD Threshold line
+                fig.add_hline(y=60, line_dash="dash", line_color="red", annotation_text="CKD Threshold (60)", annotation_position="bottom right")
+                
+                fig.update_layout(yaxis_range=[0, max(130, h_df["eGFR"].max() + 10)], xaxis_title="Timeline", yaxis_title="eGFR (mL/min/1.73m²)")
                 st.plotly_chart(fig, use_container_width=True)
 
         with tab_maintenance:
