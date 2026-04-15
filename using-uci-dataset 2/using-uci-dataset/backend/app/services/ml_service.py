@@ -269,6 +269,20 @@ class MLService:
         # 1. Prepare Data
         features_df = self._prepare_patient_data(patient_data)
         
+        # ========== DEBUG: Print raw and scaled input ==========
+        # print("\n" + "="*70)
+        # print("🔬 DIAGNOSTIC VERIFICATION LOG")
+        # print("="*70)
+        # print(f"\n📋 RAW INPUT DATA:")
+        # for key in ['age', 'sex', 'sc', 'hemo', 'bp', 'bgr', 'bu', 'al', 'sg', 'htn', 'dm', 'ane']:
+        #     print(f"   {key}: {patient_data.get(key, 'N/A')}")
+        
+        # print(f"\n📊 FEATURE ORDER (as model expects): {self.feature_names}")
+        # print(f"📊 SCALED FEATURES (first row):")
+        # for fname, fval in zip(self.feature_names, features_df.values[0]):
+        #     print(f"   {fname}: {fval:.4f}")
+        # ========== END DEBUG ==========
+        
         # 2. Model Prediction
         # Original logic: 0 = CKD, 1 = Not CKD
         prediction_binary = self.model.predict(features_df)[0]
@@ -277,6 +291,13 @@ class MLService:
         ckd_prediction = "CKD" if prediction_binary == 0 else "No CKD"
         ckd_probability = float(prediction_prob[0]) # Prob of Class 0 (CKD)
         no_ckd_probability = float(prediction_prob[1]) # Prob of Class 1 (Not CKD)
+        
+        # ========== DEBUG: Print prediction results ==========
+        # print(f"\n🎯 MODEL OUTPUT:")
+        # print(f"   Binary Prediction: {prediction_binary} ({'CKD' if prediction_binary == 0 else 'No CKD'})")
+        # print(f"   P(CKD)     = {ckd_probability:.4f} ({ckd_probability*100:.1f}%)")
+        # print(f"   P(No CKD)  = {no_ckd_probability:.4f} ({no_ckd_probability*100:.1f}%)")
+        # ========== END DEBUG ==========
         
         # 3. Confidence and Risk Level (Matching ckd_prediction_system logic)
         confidence_score = abs(ckd_probability - 0.5) * 2
@@ -313,9 +334,24 @@ class MLService:
                 ckd_stage = 0
                 stage_description = "No CKD - Normal kidney function"
         
+        # # ========== DEBUG: Print eGFR and staging ==========
+        # print(f"\n🫘 eGFR CALCULATION:")
+        # print(f"   Age={patient_data.get('age')}, Sex={patient_data.get('sex')}, SC={patient_data.get('sc')}")
+        # print(f"   eGFR = {egfr} mL/min")
+        # print(f"   Stage = {ckd_stage} | {stage_description}")
+        # ========== END DEBUG ==========
+        
         # 5. Explanations
         shap_explanation = self.get_shap_explanation(features_df)
         lime_explanation = self.get_lime_explanation(features_df)
+        
+        # # ========== DEBUG: Print SHAP top features ==========
+        # print(f"\n📈 TOP 5 SHAP FEATURES:")
+        # for feat in shap_explanation.get('top_features', [])[:5]:
+        #     direction = "⬆️ RISK" if feat['shap_value'] > 0 else "⬇️ PROTECTIVE"
+        #     print(f"   {feat['feature']:>10s}: {feat['shap_value']:+.4f} ({direction})")
+        # print("="*70 + "\n")
+        # ========== END DEBUG ==========
         
         # 6. ENHANCED: Personalized Recommendations
         top_features = shap_explanation.get('top_features', [])
