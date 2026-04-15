@@ -172,13 +172,20 @@ class MLService:
         """Generate LIME explanation for prediction"""
         try:
             if self.lime_explainer is None:
-                # We initialize with the current data as a base if no background data is available
-                # In a real app, you'd want some training samples here
+                # Generate a synthetic background dataset for meaningful perturbations.
+                # LIME requires a representative training distribution to understand feature variance.
+                # We simulate 200 patients in the scaled feature space (mean=0, std=1 per RobustScaler).
+                np.random.seed(42)
+                n_features = len(self.feature_names)
+                background_data = np.random.normal(0, 1, size=(200, n_features))
+                
                 self.lime_explainer = lime_tabular.LimeTabularExplainer(
-                    features_df.values,
+                    background_data,
                     feature_names=self.feature_names,
                     class_names=['CKD', 'No CKD'],
-                    mode='classification'
+                    mode='classification',
+                    discretize_continuous=False,  # Use continuous perturbation for clinical accuracy
+                    sample_around_instance=True
                 )
             
             exp = self.lime_explainer.explain_instance(
@@ -267,6 +274,20 @@ class MLService:
         # 1. Prepare Data
         features_df = self._prepare_patient_data(patient_data)
         
+        # ========== DEBUG: Print raw and scaled input ==========
+        # print("\n" + "="*70)
+        # print("🔬 DIAGNOSTIC VERIFICATION LOG")
+        # print("="*70)
+        # print(f"\n📋 RAW INPUT DATA:")
+        # for key in ['age', 'sex', 'sc', 'hemo', 'bp', 'bgr', 'bu', 'al', 'sg', 'htn', 'dm', 'ane']:
+        #     print(f"   {key}: {patient_data.get(key, 'N/A')}")
+        
+        # print(f"\n📊 FEATURE ORDER (as model expects): {self.feature_names}")
+        # print(f"📊 SCALED FEATURES (first row):")
+        # for fname, fval in zip(self.feature_names, features_df.values[0]):
+        #     print(f"   {fname}: {fval:.4f}")
+        # ========== END DEBUG ==========
+        
         # 2. Model Prediction
         # Original logic: 0 = CKD, 1 = Not CKD
         prediction_binary = self.model.predict(features_df)[0]
@@ -275,6 +296,13 @@ class MLService:
         ckd_prediction = "CKD" if prediction_binary == 0 else "No CKD"
         ckd_probability = float(prediction_prob[0]) # Prob of Class 0 (CKD)
         no_ckd_probability = float(prediction_prob[1]) # Prob of Class 1 (Not CKD)
+        
+        # ========== DEBUG: Print prediction results ==========
+        # print(f"\n🎯 MODEL OUTPUT:")
+        # print(f"   Binary Prediction: {prediction_binary} ({'CKD' if prediction_binary == 0 else 'No CKD'})")
+        # print(f"   P(CKD)     = {ckd_probability:.4f} ({ckd_probability*100:.1f}%)")
+        # print(f"   P(No CKD)  = {no_ckd_probability:.4f} ({no_ckd_probability*100:.1f}%)")
+        # ========== END DEBUG ==========
         
         # 3. Confidence and Risk Level (Matching ckd_prediction_system logic)
         confidence_score = abs(ckd_probability - 0.5) * 2
@@ -311,13 +339,42 @@ class MLService:
                 ckd_stage = 0
                 stage_description = "No CKD - Normal kidney function"
         
+        # # ========== DEBUG: Print eGFR and staging ==========
+        # print(f"\n🫘 eGFR CALCULATION:")
+        # print(f"   Age={patient_data.get('age')}, Sex={patient_data.get('sex')}, SC={patient_data.get('sc')}")
+        # print(f"   eGFR = {egfr} mL/min")
+        # print(f"   Stage = {ckd_stage} | {stage_description}")
+        # ========== END DEBUG ==========
+        
         # 5. Explanations
         shap_explanation = self.get_shap_explanation(features_df)
         lime_explanation = self.get_lime_explanation(features_df)
         
+        # # ========== DEBUG: Print SHAP top features ==========
+        # print(f"\n📈 TOP 5 SHAP FEATURES (sorted by |impact|):")
+        # for feat in shap_explanation.get('top_features', [])[:5]:
+        #     direction = "⬆️ RISK" if feat['shap_value'] > 0 else "⬇️ PROTECTIVE"
+        #     print(f"   {feat['feature']:>10s}: {feat['shap_value']:+.4f} ({direction})")
+
+        # print(f"\n🧪 TOP LIME FEATURES (sorted by |weight|):")
+        # lime_feats = lime_explanation.get('top_features', [])
+        # lime_sorted = sorted(lime_feats, key=lambda x: abs(x['lime_weight']), reverse=True)
+        # for feat in lime_sorted:
+        #     direction = "⬆️ SUPPORTS CKD" if feat['lime_weight'] > 0 else "⬇️ OPPOSES CKD"
+        #     print(f"   {feat['feature']:>10s}: {feat['lime_weight']:+.6f} ({direction})")
+        # print(f"\n   LIME R² Score: {lime_explanation.get('lime_score', 'N/A')}")
+        # print("="*70 + "\n")
+        # ========== END DEBUG ==========
+        
         # 6. ENHANCED: Personalized Recommendations
         top_features = shap_explanation.get('top_features', [])
         detailed_recommendations = self._generate_feature_recommendations(patient_data, top_features)
+
+        # 7. Generate clinical reasoning narrative from XAI outputs
+        xai_narrative = self._generate_xai_narrative(
+            patient_data, ckd_prediction, ckd_probability,
+            top_features, lime_explanation, egfr, ckd_stage
+        )
 
         return {
             'ckd_prediction': ckd_prediction,
@@ -331,8 +388,137 @@ class MLService:
             'shap_values': shap_explanation,
             'lime_values': lime_explanation,
             'top_features': top_features,
-            'recommendations': detailed_recommendations # Added this
+            'recommendations': detailed_recommendations,
+            'xai_narrative': xai_narrative
         }
+
+    def _generate_xai_narrative(self, patient_data: Dict, prediction: str, probability: float,
+                                 shap_features: List[Dict], lime_result: Dict,
+                                 egfr: float, ckd_stage: int) -> Dict:
+        """
+        Generate a structured clinical reasoning narrative by interpreting 
+        SHAP/LIME feature importance against the patient's actual biomarker values.
+        """
+        # Clinical reference ranges for contextual interpretation
+        REFERENCE_RANGES = {
+            'sc':   {'name': 'Serum Creatinine',      'unit': 'mg/dL',  'normal_low': 0.7, 'normal_high': 1.3, 'direction': 'high_is_bad'},
+            'hemo': {'name': 'Hemoglobin',             'unit': 'g/dL',   'normal_low': 12.0, 'normal_high': 17.0, 'direction': 'low_is_bad'},
+            'pcv':  {'name': 'Packed Cell Volume',     'unit': '%',       'normal_low': 36,   'normal_high': 50,   'direction': 'low_is_bad'},
+            'bp':   {'name': 'Blood Pressure',         'unit': 'mmHg',   'normal_low': 60,   'normal_high': 120,  'direction': 'high_is_bad'},
+            'bgr':  {'name': 'Blood Glucose (Random)', 'unit': 'mg/dL',  'normal_low': 70,   'normal_high': 140,  'direction': 'high_is_bad'},
+            'bu':   {'name': 'Blood Urea',             'unit': 'mg/dL',  'normal_low': 7,    'normal_high': 20,   'direction': 'high_is_bad'},
+            'al':   {'name': 'Urinary Albumin',        'unit': 'scale',  'normal_low': 0,    'normal_high': 0,    'direction': 'high_is_bad'},
+            'sg':   {'name': 'Specific Gravity',       'unit': '',       'normal_low': 1.015,'normal_high': 1.025,'direction': 'low_is_bad'},
+            'sod':  {'name': 'Sodium',                 'unit': 'mEq/L',  'normal_low': 135,  'normal_high': 145,  'direction': 'low_is_bad'},
+            'pot':  {'name': 'Potassium',              'unit': 'mEq/L',  'normal_low': 3.5,  'normal_high': 5.0,  'direction': 'high_is_bad'},
+            'wbcc': {'name': 'White Blood Cell Count',  'unit': '/µL',   'normal_low': 4500, 'normal_high': 11000,'direction': 'high_is_bad'},
+            'rbcc': {'name': 'Red Blood Cell Count',    'unit': 'M/µL',  'normal_low': 4.2,  'normal_high': 6.1,  'direction': 'low_is_bad'},
+            'htn':  {'name': 'Hypertension',           'unit': '',       'normal_low': 0,    'normal_high': 0,    'direction': 'categorical'},
+            'dm':   {'name': 'Diabetes Mellitus',      'unit': '',       'normal_low': 0,    'normal_high': 0,    'direction': 'categorical'},
+            'ane':  {'name': 'Anemia',                 'unit': '',       'normal_low': 0,    'normal_high': 0,    'direction': 'categorical'},
+        }
+
+        narrative = {}
+
+        # --- 1. Overall Summary ---
+        if prediction == "CKD":
+            narrative['summary'] = (
+                f"The algorithmic assessment indicates Chronic Kidney Disease with "
+                f"{probability*100:.1f}% statistical confidence. "
+                f"The estimated GFR is {egfr} mL/min, corresponding to Stage {ckd_stage}. "
+                f"The following analysis explains the key biomarkers that contributed to this assessment."
+            )
+        else:
+            narrative['summary'] = (
+                f"The algorithmic assessment indicates no evidence of Chronic Kidney Disease, "
+                f"with {(1-probability)*100:.1f}% confidence. "
+                f"The estimated GFR is {egfr} mL/min, indicating normal kidney function. "
+                f"Key protective factors are outlined below."
+            )
+
+        # --- 2. Top Risk Drivers with Clinical Context ---
+        risk_drivers = []
+        for feat in shap_features[:5]:  # Top 5 most impactful
+            feature_key = feat['feature']
+            shap_val = feat['shap_value']
+            ref = REFERENCE_RANGES.get(feature_key)
+            if not ref:
+                continue
+
+            raw_value = patient_data.get(feature_key, 'N/A')
+            
+            # Build contextual reasoning
+            if ref['direction'] == 'categorical':
+                value_str = str(raw_value).capitalize()
+                if str(raw_value).lower() in ['yes', '1', 1]:
+                    context = f"{ref['name']} is present, which is a known CKD comorbidity."
+                else:
+                    context = f"{ref['name']} is absent, which is a protective factor."
+            else:
+                try:
+                    val = float(raw_value)
+                    unit = ref['unit']
+                    value_str = f"{val} {unit}"
+                    
+                    if ref['direction'] == 'high_is_bad' and val > ref['normal_high']:
+                        deviation = val / ref['normal_high'] if ref['normal_high'] > 0 else 0
+                        context = (f"Value is {deviation:.1f}x the upper reference limit "
+                                   f"(normal: {ref['normal_low']}–{ref['normal_high']} {unit}). "
+                                   f"Elevated levels indicate impaired renal function.")
+                    elif ref['direction'] == 'low_is_bad' and val < ref['normal_low']:
+                        context = (f"Value is below the normal range "
+                                   f"(normal: {ref['normal_low']}–{ref['normal_high']} {unit}). "
+                                   f"Reduced levels may indicate chronic disease progression.")
+                    else:
+                        context = f"Value is within the normal reference range ({ref['normal_low']}–{ref['normal_high']} {unit})."
+                except (ValueError, TypeError):
+                    value_str = str(raw_value)
+                    context = "Unable to evaluate against reference range."
+
+            risk_drivers.append({
+                'biomarker': ref['name'],
+                'key': feature_key,
+                'value': value_str,
+                'shap_impact': shap_val,
+                'direction': 'Risk Factor' if shap_val > 0 else 'Protective Factor',
+                'clinical_context': context
+            })
+        
+        narrative['risk_drivers'] = risk_drivers
+
+        # --- 3. SHAP-LIME Agreement Analysis ---
+        lime_feats = lime_result.get('top_features', [])
+        lime_score = lime_result.get('lime_score', 0.0)
+        
+        shap_top3 = set(f['feature'] for f in shap_features[:3])
+        lime_top3 = set()
+        if lime_feats:
+            lime_sorted = sorted(lime_feats, key=lambda x: abs(x.get('lime_weight', 0)), reverse=True)
+            lime_top3 = set(f['feature'] for f in lime_sorted[:3])
+        
+        overlap = shap_top3 & lime_top3
+        agreement_pct = len(overlap) / 3 * 100 if shap_top3 else 0
+        
+        if agreement_pct >= 66:
+            agreement_text = (f"Strong agreement ({agreement_pct:.0f}%): Both SHAP and LIME identify "
+                              f"the same primary risk factors ({', '.join(overlap)}), "
+                              f"indicating high confidence in the model's reasoning.")
+        elif agreement_pct >= 33:
+            agreement_text = (f"Partial agreement ({agreement_pct:.0f}%): SHAP and LIME partially overlap "
+                              f"on key features ({', '.join(overlap) if overlap else 'limited overlap'}). "
+                              f"The model's decision boundary may be non-linear in this region.")
+        else:
+            agreement_text = (f"Low agreement ({agreement_pct:.0f}%): SHAP and LIME identify different "
+                              f"primary factors. SHAP (global) is recommended as the primary reference. "
+                              f"LIME R² = {lime_score:.2f} suggests limited local fidelity.")
+
+        narrative['agreement'] = {
+            'text': agreement_text,
+            'overlap_pct': agreement_pct,
+            'lime_r2': lime_score
+        }
+
+        return narrative
 
 
 # Global ML service instance

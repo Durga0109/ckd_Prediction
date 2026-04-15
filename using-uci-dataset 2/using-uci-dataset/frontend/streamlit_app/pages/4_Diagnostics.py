@@ -1,0 +1,365 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from datetime import datetime
+from utils.auth import require_auth, init_auth, render_sidebar
+from utils.api import get_patients, make_prediction, get_patient_history
+from utils.pdf_gen import generate_patient_pdf
+
+st.set_page_config(page_title="Diagnostic Analysis", page_icon="🏥", layout="wide")
+init_auth()
+require_auth()
+render_sidebar()
+
+st.header("Clinical Consultation & Diagnostic Assessment")
+
+# 1. Patient Selection
+patients = get_patients()
+if not patients:
+    st.warning("No clinical records identified. Please enroll a patient in the Registry module first.")
+    st.stop()
+
+# Session state management for patient continuity
+default_idx = 0
+# Check selected_pid first (from Registration), then last_active_pid (from previous run)
+persisted_pid = st.session_state.get("selected_pid") or st.session_state.get("last_active_pid")
+if persisted_pid:
+    for i, p in enumerate(patients):
+        if p["id"] == persisted_pid:
+            default_idx = i
+            break
+
+selected_patient_id = st.selectbox(
+    "Active Patient Record",
+    options=[p["id"] for p in patients],
+    index=default_idx,
+    format_func=lambda x: next((p["full_name"] for p in patients if p["id"] == x), f"ID: {x}")
+)
+
+# Patient Switch Detection: Reset results if a different patient is selected
+if "last_active_pid" not in st.session_state:
+    st.session_state.last_active_pid = selected_patient_id
+
+if st.session_state.last_active_pid != selected_patient_id:
+    st.session_state.last_active_pid = selected_patient_id
+    if "current_res" in st.session_state: del st.session_state.current_res
+    if "prev_res" in st.session_state: del st.session_state.prev_res
+    st.rerun()
+
+# Patient Data Retrieval
+patient = next((p for p in patients if p["id"] == selected_patient_id), None)
+history = get_patient_history(selected_patient_id)
+
+if patient:
+    st.caption(f"Age: {patient['age']}")
+    st.caption(f"Sex: {patient['sex']}")
+
+# Longitudinal Data pre-filling
+latest_data = patient.copy()
+if history:
+    latest_data = history[0].get('input_data', patient.copy())
+
+# 2. Laboratory Data Entry
+st.markdown("### Laboratory Results Entry")
+st.caption("Update relevant biomarkers from the latest laboratory report. Standard reference ranges are provided for clinical guidance.")
+
+# Consultation mapping
+visit_date = st.date_input("Consultation Date", value=datetime.now(), key="v_date_box")
+
+with st.form("visit_form"):
+    tab1, tab2, tab3 = st.tabs(["Hematology & Vitals", "Renal Indicators", "Clinical & Lifestyle Markers"])
+    
+    with tab1:
+        c1, c2, c3 = st.columns(3)
+        bp = c1.number_input("Systolic BP (Normal: 80 mm/Hg)", value=float(latest_data.get("bp", 80)))
+        hemo = c2.number_input("Hemoglobin (Normal: 12-17 gms/dL)", value=float(latest_data.get("hemo", 15.0)))
+        bgr = c3.number_input("Random Blood Glucose (Ref: <140 mg/dL)", value=float(latest_data.get("bgr", 120)))
+        
+        c4, c5, c6 = st.columns(3)
+        pcv = c4.number_input("Packed Cell Volume (Normal: 35-50%)", value=float(latest_data.get("pcv", 44)))
+        rbcc = c5.number_input("Erythrocyte Count (Normal: 4.5-6.0)", value=float(latest_data.get("rbcc", 5.2)))
+        wbcc = c6.number_input("Leukocyte Count (Normal: 4.5-11.0 k/uL)", value=float(latest_data.get("wbcc", 7800)))
+
+    with tab2:
+        c1, c2 = st.columns(2)
+        sc = c1.number_input("Serum Creatinine (Ref: 0.6-1.2 mg/dL)", value=float(latest_data.get("sc", 1.2)), format="%.2f")
+        bu = c2.number_input("Blood Urea (Ref: 10-40 mg/dL)", value=float(latest_data.get("bu", 36)))
+        
+        c3, c4 = st.columns(2)
+        sod = c3.number_input("Sodium (Ref: 135-145 mEq/L)", value=float(latest_data.get("sod", 137)))
+        pot = c4.number_input("Potassium (Ref: 3.5-5.0 mEq/L)", value=float(latest_data.get("pot", 4.5)))
+        
+        c5, c6, c7 = st.columns(3)
+        sg = c5.selectbox("Specific Gravity (Normal: 1.005-1.025)", [1.005, 1.010, 1.015, 1.020, 1.025], index=3)
+        al = c6.selectbox("Albuminuria (Grade 0-5)", [0, 1, 2, 3, 4, 5], index=int(latest_data.get("al", 0)))
+        su = c7.selectbox("Glycosuria (Grade 0-5)", [0, 1, 2, 3, 4, 5], index=int(latest_data.get("su", 0)))
+
+    with tab3:
+        c1, c2, c3 = st.columns(3)
+        rbc = c1.selectbox("Red Blood Cell Morphology", ["normal", "abnormal"], index=0 if latest_data.get("rbc") == "normal" else 1)
+        pc = c2.selectbox("Pus Cell Presence", ["normal", "abnormal"], index=0 if latest_data.get("pc") == "normal" else 1)
+        pcc = c3.selectbox("Pus Cell Clumps", ["not present", "present"], index=0 if latest_data.get("pcc") == "not present" else 1)
+        
+        c4, c5, c6 = st.columns(3)
+        ba = c4.selectbox("Bacteriuria", ["not present", "present"], index=0 if latest_data.get("ba") == "not present" else 1)
+        htn = c5.selectbox("Hypertensive Status", ["no", "yes"], index=0 if latest_data.get("htn") == "no" else 1)
+        dm = c6.selectbox("Diabetic History", ["no", "yes"], index=0 if latest_data.get("dm") == "no" else 1)
+        
+        c7, c8, c9 = st.columns(3)
+        cad = c7.selectbox("CAD / Cardiovascular Disease", ["no", "yes"], index=0 if latest_data.get("cad") == "no" else 1)
+        appet = c8.selectbox("Appetite Assessment", ["good", "poor"], index=0 if latest_data.get("appet") == "good" else 1)
+        pe = c9.selectbox("Peripheral Edema", ["no", "yes"], index=0 if latest_data.get("pe") == "no" else 1)
+        
+        ane = st.selectbox("Anemia Indicators", ["no", "yes"], index=0 if latest_data.get("ane") == "no" else 1)
+
+    run_btn = st.form_submit_button("Initiate Algorithmic Assessment", type="primary", use_container_width=True)
+
+if run_btn:
+    current_visit_data = {
+        "age": patient.get("age", 40), "sex": patient.get("sex", "male"), "sc": sc, "hemo": hemo, "bp": bp, "bgr": bgr, "bu": bu,
+        "sod": sod, "pot": pot, "pcv": pcv, "wbcc": wbcc, "rbcc": rbcc, "sg": sg,
+        "al": al, "su": su, "rbc": rbc, "pc": pc, "pcc": pcc, "ba": ba, "htn": htn,
+        "dm": dm, "cad": cad, "appet": appet, "pe": pe, "ane": ane
+    }
+    
+    with st.spinner("Analyzing laboratory biomarkers..."):
+        date_str = visit_date.isoformat() if visit_date else None
+        result = make_prediction(selected_patient_id, current_visit_data, visit_date=date_str)
+        
+        if result:
+            st.success("Consultation record and analysis successfully saved.")
+            st.session_state.current_res = result
+            st.session_state.prev_res = history[0] if history else None
+            # Preserve current patient selection across rerun
+            st.session_state.selected_pid = selected_patient_id
+            st.rerun()
+
+# 3. CLINICAL ANALYSIS DASHBOARD
+if "current_res" in st.session_state:
+    res = st.session_state.current_res
+    prev = st.session_state.prev_res
+    
+    st.divider()
+    
+    col_title, col_pdf = st.columns([3, 1])
+    with col_title:
+        st.subheader("Algorithmic Diagnostic Summary")
+    with col_pdf:
+        # Generate PDF
+        pdf_bytes = generate_patient_pdf(patient['full_name'], res)
+        st.download_button(
+            label="Generate Clinical Report (PDF)",
+            data=pdf_bytes,
+            file_name=f"CKD_Assessment_{patient['full_name']}_{res.get('visit_date', '')[:10]}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+
+    st.markdown(f"**Assessment Date:** {res.get('visit_date', '')[:10]}")
+    
+    # METRICS ROW
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        color = "#e63946" if res['ckd_prediction'] == "CKD" else "#2a9d8f"
+        st.markdown(f"**Diagnostic Output**")
+        st.markdown(f"<h2 style='color: {color}; margin-top: 0;'>{res['ckd_prediction']}</h2>", unsafe_allow_html=True)
+    with m2:
+        prob = res['ckd_probability'] if res['ckd_prediction'] == "CKD" else res['no_ckd_probability']
+        st.metric("Statistical Probability", f"{prob*100:.1f}%")
+    with m3:
+        e_delta = (res['egfr'] - prev['egfr']) if prev else None
+        st.metric("eGFR", f"{res['egfr']} mL/min", delta=f"{e_delta:.1f}" if e_delta is not None else None, help="Estimated Glomerular Filtration Rate")
+    with m4:
+        st.metric("Standardized CKD Stage", f"Stage {res['ckd_stage']}")
+
+    # CLINICAL INSIGHTS SECTION
+    st.markdown("---")
+    st.subheader("Automated Management Insights")
+    st.markdown("The following suggestions are generated based on identified biometric deviations.")
+    recs = res.get('recommendations', [])
+    if recs:
+        for rec in recs:
+            st.info(rec)
+    
+    st.warning(f"**Clinical Pathway Note:** {res['stage_description']}")
+
+    # INTERPRETABILITY COMPONENT
+    st.markdown("---")
+    st.subheader("Interpretability Analysis (XAI)")
+    st.write("Quantitative breakdown of biomarkers influencing the algorithmic decision.")
+    
+    tab_reasoning, tab_shap, tab_lime, tab_hist = st.tabs(["Clinical Reasoning", "SHAP Influence Scores", "LIME Local Explanation", "Longitudinal Progression"])
+    
+    with tab_reasoning:
+        narrative = res.get('xai_narrative', {})
+        if narrative:
+            # Overall Summary
+            st.info(narrative.get('summary', ''))
+            
+            # Risk Driver Cards
+            st.markdown("#### Key Biomarker Analysis")
+            drivers = narrative.get('risk_drivers', [])
+            for i, driver in enumerate(drivers):
+                direction_icon = "🔴" if driver['direction'] == 'Risk Factor' else "🟢"
+                with st.expander(f"{direction_icon} {driver['biomarker']} — {driver['value']} ({driver['direction']})", expanded=(i < 3)):
+                    col_a, col_b = st.columns([1,2])
+                    with col_a:
+                        st.metric("SHAP Impact", f"{driver['shap_impact']:+.4f}")
+                    with col_b:
+                        st.write(f"**Clinical Context:** {driver['clinical_context']}")
+            
+            # SHAP-LIME Agreement
+            st.markdown("#### Explainability Cross-Validation")
+            agreement = narrative.get('agreement', {})
+            overlap_pct = agreement.get('overlap_pct', 0)
+            if overlap_pct >= 66:
+                st.success(agreement.get('text', ''))
+            elif overlap_pct >= 33:
+                st.warning(agreement.get('text', ''))
+            else:
+                st.error(agreement.get('text', ''))
+        else:
+            st.info("Clinical reasoning narrative is not available for this session.")
+    
+    with tab_shap:
+        shap_data = res.get('top_features', [])
+        
+        if shap_data:
+            feat_df = pd.DataFrame(shap_data)
+            feat_df['abs_shap'] = feat_df['shap_value'].abs()
+            feat_df = feat_df.sort_values('abs_shap', ascending=True)
+            
+            # Explicit red/blue coloring: Red = risk (positive), Blue = protective (negative)
+            colors = ['#e63946' if v > 0 else '#457b9d' for v in feat_df['shap_value']]
+            
+            fig = go.Figure(go.Bar(
+                x=feat_df['shap_value'].tolist(),
+                y=feat_df['feature'].tolist(),
+                orientation='h',
+                marker_color=colors
+            ))
+            fig.update_layout(
+                title="SHAP Feature Weighting (Red = Increased Risk, Blue = Protective)",
+                xaxis_title="Impact Score (SHAP Value)",
+                yaxis_title="Biomarker",
+                height=450,
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            st.markdown("""
+            **SHAP Methodology Overview:**
+            *   **Positive Impact (Red):** Markers exceeding clinical thresholds that statistically correlate with CKD progression.
+            *   **Protective Impact (Blue):** Biomarkers within standard reference ranges that mitigate the probability of a CKD diagnosis.
+            """)
+
+    with tab_lime:
+        lime_data = res.get('lime_values', {}).get('top_features', [])
+        if lime_data:
+            lime_df = pd.DataFrame(lime_data)
+            lime_df['abs_weight'] = lime_df['lime_weight'].abs()
+            lime_df = lime_df.sort_values('abs_weight', ascending=True)
+            
+            # Explicit green/purple coloring: Green = supports CKD, Purple = opposes CKD
+            lime_colors = ['#2d6a4f' if v > 0 else '#7b2cbf' for v in lime_df['lime_weight']]
+            
+            fig_lime = go.Figure(go.Bar(
+                x=lime_df['lime_weight'].tolist(),
+                y=lime_df['feature'].tolist(),
+                orientation='h',
+                marker_color=lime_colors
+            ))
+            fig_lime.update_layout(
+                title="LIME Local Perturbation Analysis (Green = Supports CKD, Purple = Opposes CKD)",
+                xaxis_title="Local Weight (LIME Value)",
+                yaxis_title="Biomarker",
+                height=450,
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
+            st.plotly_chart(fig_lime, use_container_width=True)
+            
+            # R² Reliability Indicator
+            lime_score = res.get('lime_values', {}).get('lime_score', 0.0)
+            r2_col1, r2_col2 = st.columns([1, 3])
+            with r2_col1:
+                st.metric("Local Fidelity (R²)", f"{lime_score:.2f}")
+            with r2_col2:
+                if lime_score >= 0.7:
+                    st.success("High local fidelity — LIME explanation is reliable for this case.")
+                elif lime_score >= 0.4:
+                    st.warning("Moderate local fidelity — LIME provides directional insight but SHAP analysis is more precise.")
+                else:
+                    st.error("Low local fidelity — The model's decision boundary is highly non-linear at this point. Rely on SHAP analysis for this patient.")
+            
+            st.markdown("""
+            **LIME Local Insights:**
+            *   Explains the model's logic for *this specific* instance by analyzing local data perturbations.
+            *   The R² score indicates how well LIME's linear approximation captures the model's behavior locally.
+            *   High alignment between SHAP and LIME rankings increases clinical confidence in the diagnostic output.
+            """)
+        else:
+            st.info("Local LIME analysis not available for this session.")
+
+    with tab_hist:
+        if history and len(history) > 1:
+            # Prepare data with full timestamps to avoid same-day collapsing
+            h_df = pd.DataFrame([{
+                "Consultation Date": pd.to_datetime(h.get("visit_date", h["created_at"])),
+                "Diagnosis": h["ckd_prediction"],
+                "eGFR": float(h["egfr"]),
+                "Stage": h.get("ckd_stage", "N/A")
+            } for h in history]).sort_values("Consultation Date")
+            
+            # Format for hover interaction
+            h_df["Display Date"] = h_df["Consultation Date"].dt.strftime("%d %b %Y %H:%M")
+            
+            fig_trend = px.line(h_df, x='Consultation Date', y='eGFR', markers=True, 
+                              title="eGFR Longitudinal Progression Trend",
+                              hover_data=["Display Date", "eGFR", "Stage", "Diagnosis"])
+            
+            # Add Clinical Stage Background Bands (KDIGO)
+            fig_trend.add_hrect(y0=90, y1=max(140, h_df["eGFR"].max() + 10), fillcolor="green", opacity=0.1, annotation_text="G1: Normal", annotation_position="top left")
+            fig_trend.add_hrect(y0=60, y1=90, fillcolor="#ccffcc", opacity=0.15, annotation_text="G2: Mild Decrease", annotation_position="top left")
+            fig_trend.add_hrect(y0=30, y1=60, fillcolor="orange", opacity=0.1, annotation_text="G3: Moderate", annotation_position="top left")
+            fig_trend.add_hrect(y0=15, y1=30, fillcolor="red", opacity=0.1, annotation_text="G4: Severe", annotation_position="top left")
+            fig_trend.add_hrect(y0=0, y1=15, fillcolor="#8b0000", opacity=0.1, annotation_text="G5: Failure", annotation_position="top left")
+            
+            # Add CKD Threshold line
+            fig_trend.add_hline(y=60, line_dash="dash", line_color="red", annotation_text="CKD Threshold (60)", annotation_position="bottom right")
+            
+            fig_trend.update_layout(yaxis_range=[0, max(130, h_df["eGFR"].max() + 10)], xaxis_title="Timeline", yaxis_title="eGFR (mL/min/1.73m²)")
+            
+            st.plotly_chart(fig_trend, use_container_width=True)
+            
+            # Display history table below
+            display_df = h_df.copy()
+            display_df["Consultation Date"] = display_df["Consultation Date"].dt.strftime("%Y-%m-%d")
+            st.dataframe(display_df[["Consultation Date", "Diagnosis", "eGFR", "Stage"]], use_container_width=True, hide_index=True)
+        else:
+            st.info("Additional clinical sessions are required to generate longitudinal trend data.")
+
+# Professional Styling & Methodology Note
+st.divider()
+st.caption("""
+**Technical Methodology & Clinical Credits:**
+- **eGFR Calculation**: Estimated Glomerular Filtration Rate derived via the **CKD-EPI 2021** race-free equation.
+- **CKD Staging**: Classified according to the **KDIGO 2024 Clinical Practice Guidelines**.
+- **Model Engine**: Ensemble Classifiers (Random Forest/Decision Tree) operating on scikit-learn v1.7.2/1.8.0 compatibility layer.
+- **Explainability**: Local interpretability generated via SHAP (Kernel/Tree) and LIME (Tabular) methodologies.
+""")
+
+st.markdown("""
+<style>
+    .stButton>button {
+        height: 3em;
+        border-radius: 4px;
+    }
+    .stMetric {
+        border: 1px solid #e9ecef;
+        background-color: #f8f9fa;
+        padding: 0.8rem;
+        border-radius: 4px;
+    }
+</style>
+""", unsafe_allow_html=True)

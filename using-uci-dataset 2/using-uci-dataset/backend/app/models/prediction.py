@@ -32,6 +32,7 @@ class Prediction(Base):
     shap_values = Column(JSON, nullable=True)  # SHAP feature importance
     lime_values = Column(JSON, nullable=True)  # LIME explanation
     top_features = Column(JSON, nullable=True)  # Top contributing features
+    xai_narrative = Column(JSON, nullable=True)  # Clinical reasoning narrative
     
     # Input Data Snapshot
     input_data = Column(JSON, nullable=True)  # Store the values used for this prediction

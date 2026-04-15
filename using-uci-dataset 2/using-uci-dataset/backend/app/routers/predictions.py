@@ -94,6 +94,7 @@ def create_prediction(
         shap_values=prediction_result['shap_values'],
         lime_values=prediction_result['lime_values'],
         top_features=prediction_result['top_features'],
+        xai_narrative=prediction_result.get('xai_narrative'),
         input_data=patient_data,  # Save snapshot
         visit_date=request.visit_date or datetime.now()  # Use current date if not provided
     )

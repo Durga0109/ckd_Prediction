@@ -20,9 +20,9 @@ pydantic-settings==2.6.1
 python-dotenv==1.0.1
 
 # ML Dependencies (from existing project - already installed)
-numpy
+numpy<2
 pandas
-scikit-learn
+scikit-learn==1.7.2
 xgboost
 shap
 lime
@@ -31,3 +31,6 @@ joblib
 
 # Utilities
 aiosqlite==0.20.0
+
+# Email Validation
+email-validator==2.3.0

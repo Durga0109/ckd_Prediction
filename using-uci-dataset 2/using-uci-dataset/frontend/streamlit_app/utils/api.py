@@ -53,7 +53,6 @@ def signup(email: str, password: str, full_name: str, specialization: str) -> bo
         if response.status_code == 201:
             return True
         else:
-            st.error(f"Registration failed: {response.text}")
             return False
     except Exception as e:
         st.error(f"Connection error: {e}")

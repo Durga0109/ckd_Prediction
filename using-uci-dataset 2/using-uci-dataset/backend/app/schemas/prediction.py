@@ -35,6 +35,7 @@ class PredictionResponse(BaseModel):
     shap_values: Optional[Dict] = None
     lime_values: Optional[Dict] = None
     top_features: Optional[List[Dict]] = None
+    xai_narrative: Optional[Dict] = None
     
     # Snapshot
     input_data: Optional[Dict] = None
