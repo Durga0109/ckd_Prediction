@@ -189,16 +189,41 @@ if "current_res" in st.session_state:
     st.subheader("Interpretability Analysis (XAI)")
     st.write("Quantitative breakdown of biomarkers influencing the algorithmic decision.")
     
-    tab_shap, tab_lime, tab_hist = st.tabs(["SHAP Influence Scores", "LIME Local Explanation", "Longitudinal Progression"])
+    tab_reasoning, tab_shap, tab_lime, tab_hist = st.tabs(["Clinical Reasoning", "SHAP Influence Scores", "LIME Local Explanation", "Longitudinal Progression"])
+    
+    with tab_reasoning:
+        narrative = res.get('xai_narrative', {})
+        if narrative:
+            # Overall Summary
+            st.info(narrative.get('summary', ''))
+            
+            # Risk Driver Cards
+            st.markdown("#### Key Biomarker Analysis")
+            drivers = narrative.get('risk_drivers', [])
+            for i, driver in enumerate(drivers):
+                direction_icon = "🔴" if driver['direction'] == 'Risk Factor' else "🟢"
+                with st.expander(f"{direction_icon} {driver['biomarker']} — {driver['value']} ({driver['direction']})", expanded=(i < 3)):
+                    col_a, col_b = st.columns([1,2])
+                    with col_a:
+                        st.metric("SHAP Impact", f"{driver['shap_impact']:+.4f}")
+                    with col_b:
+                        st.write(f"**Clinical Context:** {driver['clinical_context']}")
+            
+            # SHAP-LIME Agreement
+            st.markdown("#### Explainability Cross-Validation")
+            agreement = narrative.get('agreement', {})
+            overlap_pct = agreement.get('overlap_pct', 0)
+            if overlap_pct >= 66:
+                st.success(agreement.get('text', ''))
+            elif overlap_pct >= 33:
+                st.warning(agreement.get('text', ''))
+            else:
+                st.error(agreement.get('text', ''))
+        else:
+            st.info("Clinical reasoning narrative is not available for this session.")
     
     with tab_shap:
         shap_data = res.get('top_features', [])
-        
-        # ========== DEBUG: Show raw data being graphed ==========
-        with st.expander("🔬 Debug: Raw SHAP Data from API Response"):
-            st.write("**top_features data (what the chart uses):**")
-            st.json(shap_data)
-        # ========== END DEBUG ==========
         
         if shap_data:
             feat_df = pd.DataFrame(shap_data)
@@ -233,16 +258,44 @@ if "current_res" in st.session_state:
         lime_data = res.get('lime_values', {}).get('top_features', [])
         if lime_data:
             lime_df = pd.DataFrame(lime_data)
-            fig_lime = px.bar(lime_df, x='lime_weight', y='feature', orientation='h', 
-                             color='lime_weight', color_continuous_scale='curl',
-                             labels={"lime_weight": "Local Weight", "feature": "Biomarker"},
-                             title="LIME Local Perturbation Analysis")
-            fig_lime.update_layout(yaxis={'categoryorder':'total ascending'}, height=450)
+            lime_df['abs_weight'] = lime_df['lime_weight'].abs()
+            lime_df = lime_df.sort_values('abs_weight', ascending=True)
+            
+            # Explicit green/purple coloring: Green = supports CKD, Purple = opposes CKD
+            lime_colors = ['#2d6a4f' if v > 0 else '#7b2cbf' for v in lime_df['lime_weight']]
+            
+            fig_lime = go.Figure(go.Bar(
+                x=lime_df['lime_weight'].tolist(),
+                y=lime_df['feature'].tolist(),
+                orientation='h',
+                marker_color=lime_colors
+            ))
+            fig_lime.update_layout(
+                title="LIME Local Perturbation Analysis (Green = Supports CKD, Purple = Opposes CKD)",
+                xaxis_title="Local Weight (LIME Value)",
+                yaxis_title="Biomarker",
+                height=450,
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
             st.plotly_chart(fig_lime, use_container_width=True)
+            
+            # R² Reliability Indicator
+            lime_score = res.get('lime_values', {}).get('lime_score', 0.0)
+            r2_col1, r2_col2 = st.columns([1, 3])
+            with r2_col1:
+                st.metric("Local Fidelity (R²)", f"{lime_score:.2f}")
+            with r2_col2:
+                if lime_score >= 0.7:
+                    st.success("High local fidelity — LIME explanation is reliable for this case.")
+                elif lime_score >= 0.4:
+                    st.warning("Moderate local fidelity — LIME provides directional insight but SHAP analysis is more precise.")
+                else:
+                    st.error("Low local fidelity — The model's decision boundary is highly non-linear at this point. Rely on SHAP analysis for this patient.")
             
             st.markdown("""
             **LIME Local Insights:**
             *   Explains the model's logic for *this specific* instance by analyzing local data perturbations.
+            *   The R² score indicates how well LIME's linear approximation captures the model's behavior locally.
             *   High alignment between SHAP and LIME rankings increases clinical confidence in the diagnostic output.
             """)
         else:
