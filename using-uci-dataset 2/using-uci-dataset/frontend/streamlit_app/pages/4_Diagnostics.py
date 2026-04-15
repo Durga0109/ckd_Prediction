@@ -22,9 +22,11 @@ if not patients:
 
 # Session state management for patient continuity
 default_idx = 0
-if "selected_pid" in st.session_state:
+# Check selected_pid first (from Registration), then last_active_pid (from previous run)
+persisted_pid = st.session_state.get("selected_pid") or st.session_state.get("last_active_pid")
+if persisted_pid:
     for i, p in enumerate(patients):
-        if p["id"] == st.session_state.selected_pid:
+        if p["id"] == persisted_pid:
             default_idx = i
             break
 
@@ -129,8 +131,8 @@ if run_btn:
             st.success("Consultation record and analysis successfully saved.")
             st.session_state.current_res = result
             st.session_state.prev_res = history[0] if history else None
-            # Clear selection state
-            if "selected_pid" in st.session_state: del st.session_state.selected_pid
+            # Preserve current patient selection across rerun
+            st.session_state.selected_pid = selected_patient_id
             st.rerun()
 
 # 3. CLINICAL ANALYSIS DASHBOARD
@@ -191,14 +193,34 @@ if "current_res" in st.session_state:
     
     with tab_shap:
         shap_data = res.get('top_features', [])
+        
+        # ========== DEBUG: Show raw data being graphed ==========
+        with st.expander("🔬 Debug: Raw SHAP Data from API Response"):
+            st.write("**top_features data (what the chart uses):**")
+            st.json(shap_data)
+        # ========== END DEBUG ==========
+        
         if shap_data:
             feat_df = pd.DataFrame(shap_data)
-            fig = px.bar(feat_df, x='shap_value', y='feature', orientation='h', 
-                         color='shap_value', color_continuous_scale='RdBu_r',
-                         labels={"shap_value": "Impact Score", "feature": "Biomarker"},
-                         title="SHAP Feature Weighting (Red = Increased Risk, Blue = Protective)")
-            fig.update_layout(yaxis={'categoryorder':'total ascending'}, height=450)
-            fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
+            feat_df['abs_shap'] = feat_df['shap_value'].abs()
+            feat_df = feat_df.sort_values('abs_shap', ascending=True)
+            
+            # Explicit red/blue coloring: Red = risk (positive), Blue = protective (negative)
+            colors = ['#e63946' if v > 0 else '#457b9d' for v in feat_df['shap_value']]
+            
+            fig = go.Figure(go.Bar(
+                x=feat_df['shap_value'].tolist(),
+                y=feat_df['feature'].tolist(),
+                orientation='h',
+                marker_color=colors
+            ))
+            fig.update_layout(
+                title="SHAP Feature Weighting (Red = Increased Risk, Blue = Protective)",
+                xaxis_title="Impact Score (SHAP Value)",
+                yaxis_title="Biomarker",
+                height=450,
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
             st.plotly_chart(fig, use_container_width=True)
             
             st.markdown("""
