@@ -91,23 +91,106 @@ else:
             if not history:
                 st.info("No diagnostic history found for this patient.")
             else:
+                import plotly.graph_objects as go
+                
                 for idx, h in enumerate(history):
                     visit_date = h.get("visit_date", h["created_at"])[:10]
-                    with st.expander(f"Visit: {visit_date} | Result: {h['ckd_prediction']} | Stage: {h['ckd_stage']}"):
-                        col_h1, col_h2 = st.columns([2, 1])
-                        with col_h1:
-                            st.write(f"**eGFR:** {h['egfr']} mL/min")
-                            st.write(f"**Probability:** {max(h.get('ckd_probability', 0), h.get('no_ckd_probability', 0))*100:.1f}%")
-                        with col_h2:
-                            # Generate PDF for this historical visit
-                            pdf_bytes = generate_patient_pdf(patient['full_name'], h)
-                            st.download_button(
-                                label="Download Report",
-                                data=pdf_bytes,
-                                file_name=f"CKD_Report_{patient['full_name']}_{visit_date}.pdf",
-                                mime="application/pdf",
-                                key=f"dl_{selected_patient_id}_{idx}"
-                            )
+                    badge = "🔴" if h['ckd_prediction'] == "CKD" else "🟢"
+                    
+                    with st.expander(f"{badge} Visit: {visit_date} | Result: {h['ckd_prediction']} | Stage: {h.get('ckd_stage', 'N/A')}", expanded=(idx == 0)):
+                        
+                        # --- Metric Row ---
+                        m1, m2, m3, m4 = st.columns(4)
+                        with m1:
+                            st.metric("Diagnosis", h['ckd_prediction'])
+                        with m2:
+                            prob = max(h.get('ckd_probability', 0), h.get('no_ckd_probability', 0))
+                            st.metric("Confidence", f"{prob*100:.1f}%")
+                        with m3:
+                            st.metric("eGFR", f"{h.get('egfr', 'N/A')} mL/min")
+                        with m4:
+                            st.metric("CKD Stage", h.get('ckd_stage', 'N/A'))
+                        
+                        # --- XAI Sub-tabs ---
+                        sub_reasoning, sub_shap, sub_lime = st.tabs(["Clinical Reasoning", "SHAP Analysis", "LIME Analysis"])
+                        
+                        with sub_reasoning:
+                            narrative = h.get('xai_narrative', {})
+                            if narrative:
+                                st.info(narrative.get('summary', ''))
+                                drivers = narrative.get('risk_drivers', [])
+                                for di, driver in enumerate(drivers):
+                                    icon = "🔴" if driver['direction'] == 'Risk Factor' else "🟢"
+                                    st.markdown(f"**{icon} {driver['biomarker']}** — {driver['value']} ({driver['direction']})")
+                                    st.caption(driver['clinical_context'])
+                                
+                                agreement = narrative.get('agreement', {})
+                                if agreement:
+                                    overlap = agreement.get('overlap_pct', 0)
+                                    if overlap >= 66:
+                                        st.success(agreement.get('text', ''))
+                                    elif overlap >= 33:
+                                        st.warning(agreement.get('text', ''))
+                                    else:
+                                        st.error(agreement.get('text', ''))
+                            else:
+                                st.caption("Clinical reasoning not available for this visit.")
+                        
+                        with sub_shap:
+                            shap_feats = h.get('top_features', [])
+                            if shap_feats:
+                                s_df = pd.DataFrame(shap_feats)
+                                s_df['abs_shap'] = s_df['shap_value'].abs()
+                                s_df = s_df.sort_values('abs_shap', ascending=True)
+                                colors = ['#e63946' if v > 0 else '#457b9d' for v in s_df['shap_value']]
+                                fig_s = go.Figure(go.Bar(
+                                    x=s_df['shap_value'].tolist(),
+                                    y=s_df['feature'].tolist(),
+                                    orientation='h', marker_color=colors
+                                ))
+                                fig_s.update_layout(
+                                    title="SHAP Feature Weighting",
+                                    xaxis_title="Impact Score", yaxis_title="Biomarker",
+                                    height=350, margin=dict(l=10, r=10, t=35, b=10)
+                                )
+                                st.plotly_chart(fig_s, use_container_width=True, key=f"shap_{idx}")
+                            else:
+                                st.caption("SHAP data not available for this visit.")
+                        
+                        with sub_lime:
+                            lime_data = h.get('lime_values', {}).get('top_features', [])
+                            if lime_data:
+                                l_df = pd.DataFrame(lime_data)
+                                l_df['abs_w'] = l_df['lime_weight'].abs()
+                                l_df = l_df.sort_values('abs_w', ascending=True)
+                                lcolors = ['#2d6a4f' if v > 0 else '#7b2cbf' for v in l_df['lime_weight']]
+                                fig_l = go.Figure(go.Bar(
+                                    x=l_df['lime_weight'].tolist(),
+                                    y=l_df['feature'].tolist(),
+                                    orientation='h', marker_color=lcolors
+                                ))
+                                fig_l.update_layout(
+                                    title="LIME Local Perturbation",
+                                    xaxis_title="Local Weight", yaxis_title="Biomarker",
+                                    height=350, margin=dict(l=10, r=10, t=35, b=10)
+                                )
+                                st.plotly_chart(fig_l, use_container_width=True, key=f"lime_{idx}")
+                                
+                                lime_r2 = h.get('lime_values', {}).get('lime_score', 0)
+                                st.metric("Local Fidelity (R²)", f"{lime_r2:.2f}")
+                            else:
+                                st.caption("LIME data not available for this visit.")
+                        
+                        # --- PDF Download ---
+                        st.divider()
+                        pdf_bytes = generate_patient_pdf(patient['full_name'], h)
+                        st.download_button(
+                            label="Download Full Report (PDF)",
+                            data=pdf_bytes,
+                            file_name=f"CKD_Report_{patient['full_name']}_{visit_date}.pdf",
+                            mime="application/pdf",
+                            key=f"dl_{selected_patient_id}_{idx}"
+                        )
 
         with tab_trends:
             if len(history) < 2:
