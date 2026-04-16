@@ -83,36 +83,41 @@ def train_random_forest_model(X_train, y_train, X_val, y_val):
 
 def save_models(best_model, model_name, scaler, feature_names, label_encoders, target_encoder, knn_imputer, test_metrics):
     """Save all models and preprocessors"""
+    MODELS_DIR = 'trained_models'
     
-    print("\n💾 Saving models and preprocessors...")
+    if not os.path.exists(MODELS_DIR):
+        os.makedirs(MODELS_DIR)
+        print(f"\n📁 Created directory: {MODELS_DIR}")
+        
+    print(f"\n💾 Saving models and preprocessors to '{MODELS_DIR}/'...")
     
     # Save the selected model as the best model
-    joblib.dump(best_model, 'ckd_best_model.pkl')
+    joblib.dump(best_model, os.path.join(MODELS_DIR, 'ckd_best_model.pkl'))
     print(f"   ✅ Selected model ({model_name}) saved as: ckd_best_model.pkl")
     
     # Also save with specific name
     model_filename = f"ckd_{model_name.lower().replace(' ', '_')}_model.pkl"
-    joblib.dump(best_model, model_filename)
+    joblib.dump(best_model, os.path.join(MODELS_DIR, model_filename))
     print(f"   ✅ Model also saved as: {model_filename}")
     
     # Save preprocessors
-    joblib.dump(scaler, 'ckd_scaler.pkl')
+    joblib.dump(scaler, os.path.join(MODELS_DIR, 'ckd_scaler.pkl'))
     print("   ✅ Scaler saved: ckd_scaler.pkl")
     
-    joblib.dump(feature_names, 'ckd_feature_names.pkl')
+    joblib.dump(feature_names, os.path.join(MODELS_DIR, 'ckd_feature_names.pkl'))
     print("   ✅ Feature names saved: ckd_feature_names.pkl")
     
-    joblib.dump(label_encoders, 'ckd_label_encoders.pkl')
+    joblib.dump(label_encoders, os.path.join(MODELS_DIR, 'ckd_label_encoders.pkl'))
     print("   ✅ Label encoders saved: ckd_label_encoders.pkl")
     
-    joblib.dump(target_encoder, 'ckd_target_encoder.pkl')
+    joblib.dump(target_encoder, os.path.join(MODELS_DIR, 'ckd_target_encoder.pkl'))
     print("   ✅ Target encoder saved: ckd_target_encoder.pkl")
     
-    joblib.dump(knn_imputer, 'ckd_knn_imputer.pkl')
+    joblib.dump(knn_imputer, os.path.join(MODELS_DIR, 'ckd_knn_imputer.pkl'))
     print("   ✅ KNN imputer saved: ckd_knn_imputer.pkl")
     
     # Save metrics
-    joblib.dump(test_metrics, 'ckd_test_metrics.pkl')
+    joblib.dump(test_metrics, os.path.join(MODELS_DIR, 'ckd_test_metrics.pkl'))
     print("   ✅ Test metrics saved: ckd_test_metrics.pkl")
     
     # Save model selection info

@@ -40,28 +40,35 @@ def main():
     test_metrics = evaluate_model(best_model, X_test, y_test, target_encoder)
     
     # Step 4: Save everything
-    print("\n💾 Saving models and preprocessors...")
+    import os
+    MODELS_DIR = 'trained_models'
     
-    joblib.dump(best_model, 'ckd_best_model.pkl')
+    if not os.path.exists(MODELS_DIR):
+        os.makedirs(MODELS_DIR)
+        print(f"\n📁 Created directory: {MODELS_DIR}")
+        
+    print("\n💾 Saving models and preprocessors to 'trained_models/'...")
+    
+    joblib.dump(best_model, os.path.join(MODELS_DIR, 'ckd_best_model.pkl'))
     print("   ✅ Model saved: ckd_best_model.pkl")
     
-    joblib.dump(scaler, 'ckd_scaler.pkl')
+    joblib.dump(scaler, os.path.join(MODELS_DIR, 'ckd_scaler.pkl'))
     print("   ✅ Scaler saved: ckd_scaler.pkl")
     
-    joblib.dump(feature_names, 'ckd_feature_names.pkl')
+    joblib.dump(feature_names, os.path.join(MODELS_DIR, 'ckd_feature_names.pkl'))
     print("   ✅ Feature names saved: ckd_feature_names.pkl")
     
-    joblib.dump(label_encoders, 'ckd_label_encoders.pkl')
+    joblib.dump(label_encoders, os.path.join(MODELS_DIR, 'ckd_label_encoders.pkl'))
     print("   ✅ Label encoders saved: ckd_label_encoders.pkl")
     
-    joblib.dump(target_encoder, 'ckd_target_encoder.pkl')
+    joblib.dump(target_encoder, os.path.join(MODELS_DIR, 'ckd_target_encoder.pkl'))
     print("   ✅ Target encoder saved: ckd_target_encoder.pkl")
     
-    joblib.dump(knn_imputer, 'ckd_knn_imputer.pkl')
+    joblib.dump(knn_imputer, os.path.join(MODELS_DIR, 'ckd_knn_imputer.pkl'))
     print("   ✅ KNN imputer saved: ckd_knn_imputer.pkl")
     
     # Save metrics
-    joblib.dump(test_metrics, 'ckd_test_metrics.pkl')
+    joblib.dump(test_metrics, os.path.join(MODELS_DIR, 'ckd_test_metrics.pkl'))
     print("   ✅ Test metrics saved: ckd_test_metrics.pkl")
     
     print("\n" + "="*80)

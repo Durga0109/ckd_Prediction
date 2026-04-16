@@ -1,0 +1,16 @@
+# Core Machine Learning Dependencies
+numpy<2
+pandas
+scikit-learn>=1.2.0
+seaborn
+matplotlib
+xgboost
+shap
+imbalanced-learn
+joblib
+lime
+
+# Utility Dependencies
+python-dotenv
+fpdf2
+plotly

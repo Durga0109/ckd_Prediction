@@ -10,32 +10,32 @@ This script demonstrates how to:
 Run this after training the model with train_model.py
 """
 
-import joblib
-import numpy as np
-from ckd_prediction_system import complete_prediction_pipeline
+import os
 
 def load_trained_models():
     """
     Load all trained models and preprocessors
     """
+    MODELS_DIR = 'trained_models'
+    
     print("\n" + "="*80)
-    print("📂 Loading trained models and preprocessors...")
+    print(f"📂 Loading trained models from '{MODELS_DIR}'...")
     print("="*80)
     
     try:
-        model = joblib.load('ckd_best_model.pkl')
+        model = joblib.load(os.path.join(MODELS_DIR, 'ckd_best_model.pkl'))
         print("   ✅ Model loaded")
         
-        scaler = joblib.load('ckd_scaler.pkl')
+        scaler = joblib.load(os.path.join(MODELS_DIR, 'ckd_scaler.pkl'))
         print("   ✅ Scaler loaded")
         
-        feature_names = joblib.load('ckd_feature_names.pkl')
+        feature_names = joblib.load(os.path.join(MODELS_DIR, 'ckd_feature_names.pkl'))
         print("   ✅ Feature names loaded")
         
-        label_encoders = joblib.load('ckd_label_encoders.pkl')
+        label_encoders = joblib.load(os.path.join(MODELS_DIR, 'ckd_label_encoders.pkl'))
         print("   ✅ Label encoders loaded")
         
-        target_encoder = joblib.load('ckd_target_encoder.pkl')
+        target_encoder = joblib.load(os.path.join(MODELS_DIR, 'ckd_target_encoder.pkl'))
         print("   ✅ Target encoder loaded")
         
         print("\n✅ All models loaded successfully!")
@@ -44,7 +44,7 @@ def load_trained_models():
         
     except FileNotFoundError as e:
         print(f"\n❌ Error: {e}")
-        print("\n⚠️  Please run 'python train_model.py' first to train and save the models!")
+        print(f"\n⚠️  Models not found in {MODELS_DIR}. Please run 'python train_model.py' first!")
         return None, None, None, None, None
 
 

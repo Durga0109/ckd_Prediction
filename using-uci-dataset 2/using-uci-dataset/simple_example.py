@@ -7,16 +7,22 @@ This shows the EASIEST way to use the CKD Prediction System
 import joblib
 from ckd_prediction_system import complete_prediction_pipeline
 
+import os
 # ============================================================================
 # STEP 1: Load the trained models (do this once)
 # ============================================================================
 
-print("Loading trained models...")
-model = joblib.load('ckd_best_model.pkl')
-scaler = joblib.load('ckd_scaler.pkl')
-feature_names = joblib.load('ckd_feature_names.pkl')
-label_encoders = joblib.load('ckd_label_encoders.pkl')
-print("✅ Models loaded!\n")
+print("Loading trained models from 'trained_models/'...")
+MODELS_DIR = 'trained_models'
+try:
+    model = joblib.load(os.path.join(MODELS_DIR, 'ckd_best_model.pkl'))
+    scaler = joblib.load(os.path.join(MODELS_DIR, 'ckd_scaler.pkl'))
+    feature_names = joblib.load(os.path.join(MODELS_DIR, 'ckd_feature_names.pkl'))
+    label_encoders = joblib.load(os.path.join(MODELS_DIR, 'ckd_label_encoders.pkl'))
+    print("✅ Models loaded!\n")
+except FileNotFoundError:
+    print(f"❌ Error: Models not found in {MODELS_DIR}. Please run 'python train_model.py' first.")
+    exit()
 
 # ============================================================================
 # STEP 2: Prepare your patient data

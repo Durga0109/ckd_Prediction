@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     
-    # ML Models Path — absolute path to project root where .pkl files live
-    ml_models_path: str = PROJECT_ROOT
+    # ML Models Path — absolute path to project root/trained_models where .pkl files live
+    ml_models_path: str = os.path.join(PROJECT_ROOT, "trained_models")
     
     class Config:
         env_file = ".env"

@@ -87,14 +87,21 @@ def quick_predict(age=48, bp=80, sg=1.020, al=1, su=0,
     }
     
     # Load models
+    import os
+    MODELS_DIR = 'trained_models'
+    
     print("\n" + "="*80)
-    print("📂 Loading trained models...")
+    print(f"📂 Loading trained models from '{MODELS_DIR}'...")
     print("="*80)
     
-    model = joblib.load('ckd_best_model.pkl')
-    scaler = joblib.load('ckd_scaler.pkl')
-    feature_names = joblib.load('ckd_feature_names.pkl')
-    label_encoders = joblib.load('ckd_label_encoders.pkl')
+    try:
+        model = joblib.load(os.path.join(MODELS_DIR, 'ckd_best_model.pkl'))
+        scaler = joblib.load(os.path.join(MODELS_DIR, 'ckd_scaler.pkl'))
+        feature_names = joblib.load(os.path.join(MODELS_DIR, 'ckd_feature_names.pkl'))
+        label_encoders = joblib.load(os.path.join(MODELS_DIR, 'ckd_label_encoders.pkl'))
+    except FileNotFoundError:
+        print(f"❌ Error: Models not found in {MODELS_DIR}. Please run 'python train_model.py' first.")
+        return None, None
     
     print("✅ Models loaded successfully!")
     
