@@ -4,10 +4,14 @@ Quick Demo of CKD Prediction System
 Runs predictions on 3 example patients and generates visualizations
 """
 
+import sys
+import os
+# Add parent directory to path to find ml_pipeline
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from ml_pipeline.ckd_prediction_system import complete_prediction_pipeline
 import joblib
 import numpy as np
-from ckd_prediction_system import complete_prediction_pipeline
-import os
 
 def load_trained_models():
     """Load all trained models and preprocessors"""

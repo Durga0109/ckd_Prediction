@@ -6,8 +6,13 @@ Enter your patient data and get predictions with explanations!
 Usage: python3 predict.py
 """
 
+import sys
+import os
+# Add parent directory to path to find ml_pipeline
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from ml_pipeline.ckd_prediction_system import complete_prediction_pipeline
 import joblib
-from ckd_prediction_system import complete_prediction_pipeline
 
 def get_patient_input():
     """

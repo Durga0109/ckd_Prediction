@@ -79,11 +79,25 @@ ckd_Prediction/
         │   │   ├── pages/          # Login, Patients, Diagnostics
         │   │   └── utils/          # API & PDF generation
         │
+        ├── ml_pipeline/            # Core ML Engine & Training
+        │   ├── __init__.py
+        │   ├── ckd_prediction_system.py
+        │   ├── train_model.py
+        │   ├── train_xgboost.py
+        │   └── train_model_selector.py
+        │
+        ├── scripts/                # Evaluation & Utility tools
+        │   ├── __init__.py
+        │   ├── demo.py
+        │   └── predict.py
+        │
+        ├── docs/         # Specialized ML documentation
+        │   ├── Model_switching.md
+        │   ├── Use_xgboost.md
+        │   └── ...
+        │
         ├── trained_models/         # Serialized ML artifacts (Untracked)
-        │
         ├── deployment/             # Docker & Kubernetes manifests
-        │
-        ├── training_scripts/       # train_model.py, etc.
         ├── requirements.txt        # Unified ML dependencies
         └── chronic_kidney_disease_dataset.csv
 ```
@@ -156,7 +170,7 @@ pip install -r requirements.txt
 ### 4. Generate Machine Learning Models
 New clones do not include binary models. You must train them locally first:
 ```bash
-python3 train_model.py
+python3 ml_pipeline/train_model.py
 ```
 
 ### 5. Launch the Application
