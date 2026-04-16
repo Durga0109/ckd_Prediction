@@ -145,7 +145,8 @@ We provide dual explanations for every prediction to ensure clinical trust:
 ## 🚀 Setup & Installation
 
 ### 1. Prerequisites
-- Python 3.9+
+- Python 3.11+ (Recommended)
+- Python 3.9+ (Minimum compatible)
 - [Homebrew](https://brew.sh/) (Mac users, for `libomp`)
 
 ### 2. Clone and Environment
@@ -153,8 +154,10 @@ We provide dual explanations for every prediction to ensure clinical trust:
 git clone https://github.com/Durga0109/ckd_Prediction.git
 cd ckd_Prediction/"using-uci-dataset 2/using-uci-dataset"
 
-# Create virtual environment
-python3 -m venv venv
+# Create virtual environment (Python 3.11 recommended)
+python3.11 -m venv venv
+# OR if python3.11 is not available: python3 -m venv venv
+
 source venv/bin/activate
 ```
 
