@@ -149,5 +149,9 @@ cython_debug/
 .DS_Store
 
 # Models and Large Files (optional - remove if you want to commit models)
-# *.pkl
-# *.joblib
+*.pkl
+*.joblib
+trained_models/
+
+# Database files
+*.db

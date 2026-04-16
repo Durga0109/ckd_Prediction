@@ -1,5 +1,5 @@
 import streamlit as st
-from utils.auth import init_auth, is_authenticated
+from utils.auth import init_auth, is_authenticated, render_sidebar
 
 # Page config
 st.set_page_config(
@@ -13,7 +13,6 @@ st.set_page_config(
 init_auth()
 
 # Sidebar
-from utils.auth import render_sidebar
 render_sidebar()
 
 # Main content
