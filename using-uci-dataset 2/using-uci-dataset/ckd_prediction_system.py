@@ -30,7 +30,7 @@ warnings.filterwarnings('ignore')
 np.random.seed(42)
 
 
-def load_and_preprocess_data(filepath='chronic_kidney_disease_dataset.csv'):
+def load_and_preprocess_data(filepath='dataset/chronic_kidney_disease_dataset.csv'):
     """
     Complete data preprocessing pipeline
     
